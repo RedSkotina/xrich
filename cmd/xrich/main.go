@@ -12,18 +12,28 @@ import (
 	"github.com/RedSkotina/xrich"
 )
 
-func parseAndJoinJSON(readers []io.Reader) []xrich.Record {
+func parseAndJoinJSONL(readers []io.Reader) []xrich.Record {
 	var res []xrich.Record
 
-	for _, rd := range readers {
-		var recs []xrich.Record
-		dec := json.NewDecoder(rd)
-		err := dec.Decode(&recs)
-		if err != nil {
-			log.Println(err)
+	for _, r := range readers {
+		sc := bufio.NewScanner(r)
+		for sc.Scan() {
+			var rec xrich.Record
+
+			lr := strings.NewReader(sc.Text())
+			dec := json.NewDecoder(lr)
+			err := dec.Decode(&rec)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+			res = append(res, rec)
+		}
+		if err := sc.Err(); err != nil {
+			log.Println("reading input:", err)
 			continue
 		}
-		res = append(res, recs...)
+
 	}
 
 	return res
@@ -42,12 +52,13 @@ func main() {
 		file, err := os.Open(fpath)
 		if err != nil {
 			log.Println(err)
+			continue
 		}
 		reader := bufio.NewReader(file)
 		readers = append(readers, reader)
 	}
 
-	recs := parseAndJoinJSON(readers)
+	recs := parseAndJoinJSONL(readers)
 
 	c := xrich.NewChain()
 	c.Build(recs)
