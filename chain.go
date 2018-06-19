@@ -1,5 +1,4 @@
-// markov project main.go
-package main
+package xrich
 
 import (
 	"bufio"
@@ -11,16 +10,29 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/RedSkotina/xrich"
 )
 
 const (
-	NPREF   = 2
+	// NPREF is Prefix length
+	NPREF = 2
+	// NONWORD is empty word
 	NONWORD = "\n"
-	MAXGEN  = 50
+	// MAXGEN Number of generated words
+	MAXGEN = 50
 )
 
+//Record contain a original text block
+type Record struct {
+	Date string `json:"date"`
+	Text string `json:"text"`
+}
+
+//StringArray is type for suffixes
 type StringArray []string
 
+//GeneratePolicy is default policy for select prefix and suffix
 type GeneratePolicy struct {
 }
 
@@ -40,6 +52,7 @@ func (r *GeneratePolicy) findSuffix(sx StringArray) string {
 	return sx[rand.Intn(len(sx))]
 }
 
+//Prefix is key for map {prefix:suffix}
 type Prefix struct {
 	isMarked bool
 	words    [NPREF]string
@@ -64,13 +77,15 @@ func (r *Prefix) put(word string) {
 	r.words[NPREF-1] = word
 }
 
+//Chain are store for state transtions
 type Chain struct {
 	statetab map[Prefix]StringArray
 	prefix   Prefix
 	policy   GeneratePolicy
 }
 
-func newChain() Chain {
+//NewChain is create Markov chain
+func NewChain() Chain {
 	c := Chain{}
 	c.statetab = make(map[Prefix]StringArray)
 	c.prefix = *newPrefix(NPREF)
@@ -141,11 +156,6 @@ func (r *Chain) generate(nwords int) []string {
 	return res
 }
 
-type Record struct {
-	Date string `json: "date"`
-	Text string `json: "text"`
-}
-
 func parseAndJoinJSON(readers []io.Reader) []Record {
 	var res []Record
 
@@ -165,7 +175,7 @@ func parseAndJoinJSON(readers []io.Reader) []Record {
 
 func main() {
 
-	maxgen := flag.Int("l", MAXGEN , "number of generated words")
+	maxgen := flag.Int("l", MAXGEN, "number of generated words")
 	flag.Parse()
 	flags := flag.Args()
 
@@ -183,7 +193,7 @@ func main() {
 
 	recs := parseAndJoinJSON(readers)
 
-	c := newChain()
+	c := xrich.NewChain()
 	c.build(recs)
 	t := c.generate(*maxgen)
 	text := strings.Join(t, " ")
