@@ -36,11 +36,13 @@ func newGeneratePolicy() *GeneratePolicy {
 	return new(GeneratePolicy)
 }
 
-func (r *GeneratePolicy) findFirstPrefix(statetab map[Prefix]StringArray) Prefix {
-	return *newPrefix(NPREF)
+func (r *GeneratePolicy) findFirstPrefix(c *Chain) Prefix {
+	//return *newPrefix(NPREF)
+	return *c.keys[rand.Intn(len(c.keys))]
 }
-func (r *GeneratePolicy) findNextPrefix(statetab map[Prefix]StringArray) Prefix {
-	return *newPrefix(NPREF)
+func (r *GeneratePolicy) findNextPrefix(c *Chain) Prefix {
+	//return *newPrefix(NPREF)
+	return *c.keys[rand.Intn(len(c.keys))]
 }
 func (r *GeneratePolicy) findSuffix(sx StringArray) string {
 	return sx[rand.Intn(len(sx))]
@@ -76,6 +78,7 @@ type Chain struct {
 	statetab map[Prefix]StringArray
 	prefix   Prefix
 	policy   GeneratePolicy
+	keys     []*Prefix
 }
 
 //NewChain create Markov chain
@@ -88,14 +91,16 @@ func NewChain() Chain {
 }
 
 func (r *Chain) add(word string, isMarked bool) {
+
 	suf, ok := r.statetab[r.prefix]
-	if !ok {
-		suf = []string{}
+	if ok {
+		suf = append(suf, word)
+		r.statetab[r.prefix] = suf
+	} else {
 		p := Prefix{false, r.prefix.words}
-		r.statetab[p] = suf
+		r.statetab[p] = []string{word}
+		r.keys = append(r.keys, &p)
 	}
-	suf = append(suf, word)
-	r.statetab[r.prefix] = suf
 
 	r.prefix.isMarked = isMarked
 	r.prefix.lshift()
@@ -115,7 +120,7 @@ func (r *Chain) Build(recs []Record) {
 		if err := scanner.Err(); err != nil {
 			log.Panicln("reading input:", err)
 		}
-		r.add(NONWORD, true)
+		r.add(".", true)
 	}
 
 }
@@ -123,7 +128,7 @@ func (r *Chain) Build(recs []Record) {
 //Generate return string array of generated text with `nwords` max number words
 func (r *Chain) Generate(nwords int) []string {
 	var res []string
-	r.prefix = r.policy.findFirstPrefix(r.statetab)
+	r.prefix = r.policy.findFirstPrefix(r)
 
 	for i := 0; i < nwords; i++ {
 		sx, ok := r.statetab[r.prefix]
@@ -131,10 +136,9 @@ func (r *Chain) Generate(nwords int) []string {
 		if ok {
 			suf = r.policy.findSuffix(sx)
 			if suf == NONWORD {
-				r.prefix = r.policy.findNextPrefix(r.statetab)
+				r.prefix = r.policy.findNextPrefix(r)
 				continue
 			}
-			//log.Println(suf)
 			res = append(res, suf)
 
 		} else {
