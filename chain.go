@@ -2,16 +2,10 @@ package xrich
 
 import (
 	"bufio"
-	"encoding/json"
-	"flag"
-	"io"
 	"log"
 	"math/rand"
-	"os"
 	"strings"
 	"time"
-
-	"github.com/RedSkotina/xrich"
 )
 
 const (
@@ -25,7 +19,7 @@ const (
 
 //Record contain a original text block
 type Record struct {
-	Date string `json:"date"`
+	Date int64  `json:"date"`
 	Text string `json:"text"`
 }
 
@@ -84,7 +78,7 @@ type Chain struct {
 	policy   GeneratePolicy
 }
 
-//NewChain is create Markov chain
+//NewChain create Markov chain
 func NewChain() Chain {
 	c := Chain{}
 	c.statetab = make(map[Prefix]StringArray)
@@ -109,7 +103,8 @@ func (r *Chain) add(word string, isMarked bool) {
 
 }
 
-func (r *Chain) build(recs []Record) {
+//Build initialize chain with array of text blocks []Record
+func (r *Chain) Build(recs []Record) {
 	for _, rec := range recs {
 		reader := strings.NewReader(rec.Text)
 		scanner := bufio.NewScanner(reader)
@@ -125,7 +120,8 @@ func (r *Chain) build(recs []Record) {
 
 }
 
-func (r *Chain) generate(nwords int) []string {
+//Generate return string array of generated text with `nwords` max number words
+func (r *Chain) Generate(nwords int) []string {
 	var res []string
 	r.prefix = r.policy.findFirstPrefix(r.statetab)
 
@@ -154,49 +150,4 @@ func (r *Chain) generate(nwords int) []string {
 
 	}
 	return res
-}
-
-func parseAndJoinJSON(readers []io.Reader) []Record {
-	var res []Record
-
-	for _, rd := range readers {
-		var recs []Record
-		dec := json.NewDecoder(rd)
-		err := dec.Decode(&recs)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		res = append(res, recs...)
-	}
-
-	return res
-}
-
-func main() {
-
-	maxgen := flag.Int("l", MAXGEN, "number of generated words")
-	flag.Parse()
-	flags := flag.Args()
-
-	var readers []io.Reader
-
-	for _, fpath := range flags {
-
-		file, err := os.Open(fpath)
-		if err != nil {
-			log.Println(err)
-		}
-		reader := bufio.NewReader(file)
-		readers = append(readers, reader)
-	}
-
-	recs := parseAndJoinJSON(readers)
-
-	c := xrich.NewChain()
-	c.build(recs)
-	t := c.generate(*maxgen)
-	text := strings.Join(t, " ")
-	log.Println(text)
-
 }
