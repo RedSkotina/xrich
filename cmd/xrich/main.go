@@ -49,9 +49,9 @@ func main() {
 
 	recs := parseAndJoinJSON(readers)
 
-	c := xrich.newChain()
-	c.build(recs)
-	t := c.generate(*maxgen)
+	c := xrich.NewChain()
+	c.Build(recs)
+	t := c.Generate(*maxgen)
 	text := strings.Join(t, " ")
 	log.Println(text)
 
