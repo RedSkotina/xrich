@@ -155,8 +155,9 @@ func (r *Chain) iterateGen() string {
 }
 
 //Generate return string array of generated text with `nwords` max number words
-func (r *Chain) Generate(nwords int) []string {
-	var res []string
+func (r *Chain) Generate(nwords int) string {
+	var res string
+	var recs []string
 	if len(r.statetab) == 0 {
 		return res
 	}
@@ -164,8 +165,9 @@ func (r *Chain) Generate(nwords int) []string {
 
 	for i := 0; i < nwords; i++ {
 		s := r.iterateGen()
-		res = append(res, s)
+		recs = append(recs, s)
 	}
+	res = strings.Join(recs, " ")
 	return res
 }
 
@@ -177,8 +179,8 @@ func (r *Chain) GenerateAnswer(message string, nwords int) string {
 		return res
 	}
 
-	r.prefix = *newPrefix(NPREF)
-	r.prefix.put(SEP)
+	prefix := *newPrefix(NPREF)
+	prefix.put(SEP)
 
 	sr := strings.NewReader(message)
 	sc := bufio.NewScanner(sr)
@@ -186,15 +188,18 @@ func (r *Chain) GenerateAnswer(message string, nwords int) string {
 
 	for sc.Scan() {
 		w := sc.Text()
-		r.prefix.isMarked = false
-		r.prefix.lshift()
-		r.prefix.put(w)
+		prefix.isMarked = false
+		prefix.lshift()
+		prefix.put(w)
+		r.prefix = prefix
 		var recs []string
 		for i, s := 0, r.iterateGen(); i < nwords && s != NONWORD && s != SEP; i, s = i+1, r.iterateGen() {
 			recs = append(recs, s)
 		}
-		phrases = append(phrases, strings.Join(recs, " "))
-
+		if len(recs) > 0 {
+			recs = append(prefix.words[:], recs...)
+			phrases = append(phrases, strings.Join(recs, " "))
+		}
 	}
 	if err := sc.Err(); err != nil {
 		log.Println("scan error:", err)

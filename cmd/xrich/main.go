@@ -71,8 +71,7 @@ func main() {
 	}
 
 	if *question == "" {
-		t := c.Generate(*maxgen)
-		text := strings.Join(t, " ")
+		text := c.Generate(*maxgen)
 		log.Println(text)
 	} else {
 		text := c.GenerateAnswer(*question, *maxgen)
