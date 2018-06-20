@@ -117,6 +117,9 @@ func main() {
 	// используя конфиг u создаем канал в который будут прилетать новые сообщения
 	updates, err := bot.GetUpdatesChan(u)
 
+	// discard all pending messages
+	updates.Clear()
+
 	// в канал updates прилетают структуры типа Update
 	// вычитываем их и обрабатываем
 	for update := range updates {
