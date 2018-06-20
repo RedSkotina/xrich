@@ -27,4 +27,5 @@ Look `parseAndJoinJSONL(readers []io.Reader) []xrich.Record` from `cmd/xrich/mai
 or
 
 6. Call `GenerateAnswer` method with trigger message `message`
+
 `t := c.GenerateAnswer(message, MAXGEN)`
