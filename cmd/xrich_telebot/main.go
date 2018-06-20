@@ -118,7 +118,7 @@ func main() {
 	updates, err := bot.GetUpdatesChan(u)
 
 	// discard all pending messages
-	updates.Clear()
+	//updates.Clear()
 
 	// в канал updates прилетают структуры типа Update
 	// вычитываем их и обрабатываем
