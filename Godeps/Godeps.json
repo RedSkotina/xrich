@@ -1,0 +1,7 @@
+{
+ "ImportPath": "github.com/RedSkotina/xrich",
+    "GoVersion": "go1.10",
+    "Packages": [
+        "./..."
+    ],
+}
