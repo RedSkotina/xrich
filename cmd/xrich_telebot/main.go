@@ -6,6 +6,7 @@ import (
 	"flag"
 	"io"
 	"log"
+	"math/rand"
 	"os"
 	"reflect"
 	"strings"
@@ -16,14 +17,16 @@ import (
 
 var (
 	// глобальная переменная в которой храним токен
-	telegramBotToken string
-	maxgen           int
+	telegramBotToken  string
+	maxgen            int
+	answerProbability float64
 )
 
 func init() {
 	// принимаем на входе флаг -token
 	flag.StringVar(&telegramBotToken, "token", "", "Telegram Bot Token")
 	flag.IntVar(&maxgen, "max", xrich.MAXGEN, "max number of generated words")
+	flag.Float64Var(&answerProbability, "p", 0.25, "answer probability")
 	flag.Parse()
 
 	// без него не запускаемся
@@ -106,11 +109,13 @@ func main() {
 		//log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 
 		if reflect.TypeOf(update.Message.Text).Kind() == reflect.String && update.Message.Text != "" {
-			reply := c.GenerateAnswer(update.Message.Text, maxgen)
-			// создаем ответное сообщение
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, reply)
-			// отправляем
-			bot.Send(msg)
+			if rand.Float64() <= answerProbability {
+				reply := c.GenerateAnswer(update.Message.Text, maxgen)
+				// создаем ответное сообщение
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, reply)
+				// отправляем
+				bot.Send(msg)
+			}
 		}
 	}
 }

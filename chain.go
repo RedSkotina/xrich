@@ -198,6 +198,9 @@ func (r *Chain) GenerateAnswer(message string, nwords int) string {
 		}
 		if len(recs) > 0 {
 			recs = append(prefix.words[:], recs...)
+			if recs[0] == SEP {
+				recs = recs[1:] //Remove Sep from start of phrase . UGLY!!!
+			}
 			phrases = append(phrases, strings.Join(recs, " "))
 		}
 	}
