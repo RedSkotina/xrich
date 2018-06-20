@@ -1,1 +1,1 @@
-bot: xrich_telebot
+worker: xrich_telebot
