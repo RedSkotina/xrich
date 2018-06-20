@@ -1,0 +1,1 @@
+bot: go run cmd/xrich_telebot/main.go
