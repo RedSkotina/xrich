@@ -1,1 +1,1 @@
-bot: go run cmd/xrich_telebot/main.go
+bot: xrich_telebot
