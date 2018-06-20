@@ -11,6 +11,8 @@ import (
 	"reflect"
 	"strings"
 
+	"strconv"
+
 	"github.com/RedSkotina/xrich"
 	"github.com/Syfaro/telegram-bot-api"
 )
@@ -22,16 +24,29 @@ var (
 	answerProbability float64
 )
 
+const (
+	//DefaultAnswerProbability is used when env and flag is not set
+	DefaultAnswerProbability = 0.25
+)
+
 func init() {
-	// принимаем на входе флаг -token
-	flag.StringVar(&telegramBotToken, "token", "", "Telegram Bot Token")
-	flag.IntVar(&maxgen, "max", xrich.MAXGEN, "max number of generated words")
-	flag.Float64Var(&answerProbability, "p", 0.25, "answer probability")
+	nwords, err := strconv.Atoi(os.Getenv("XRICH_MAX_WORDS"))
+	if err != nil {
+		nwords = xrich.MAXGEN
+	}
+
+	prob, err := strconv.ParseFloat(os.Getenv("XRICH_ANSWER_PROBABALITY"), 64)
+	if err != nil {
+		prob = DefaultAnswerProbability
+	}
+	flag.StringVar(&telegramBotToken, "token", os.Getenv("XRICH_TELEGRAM_TOKEN"), "Telegram Bot Token")
+	flag.IntVar(&maxgen, "max", nwords, "max number of generated words")
+	flag.Float64Var(&answerProbability, "p", prob, "answer probability")
 	flag.Parse()
 
 	// без него не запускаемся
 	if telegramBotToken == "" {
-		log.Print("-token is required")
+		log.Print("token is required")
 		os.Exit(1)
 	}
 }
@@ -64,11 +79,15 @@ func parseAndJoinJSONL(readers []io.Reader) []xrich.Record {
 }
 
 func main() {
+	filenamesEnv := os.Getenv("XRICH_INPUT_FILES")
+	filenames := strings.Split(filenamesEnv, ";")
 	flags := flag.Args()
+
+	filenames = append(filenames, flags...)
 
 	var readers []io.Reader
 
-	for _, fpath := range flags {
+	for _, fpath := range filenames {
 		file, err := os.Open(fpath)
 		if err != nil {
 			log.Println(err)
