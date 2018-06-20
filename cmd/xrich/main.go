@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -42,13 +43,15 @@ func parseAndJoinJSONL(readers []io.Reader) []xrich.Record {
 func main() {
 
 	maxgen := flag.Int("l", xrich.MAXGEN, "number of generated words")
+	question := flag.String("q", "", "Find answer for question")
+	gendump := flag.Bool("d", false, "Dump state table")
+
 	flag.Parse()
 	flags := flag.Args()
 
 	var readers []io.Reader
 
 	for _, fpath := range flags {
-
 		file, err := os.Open(fpath)
 		if err != nil {
 			log.Println(err)
@@ -62,8 +65,18 @@ func main() {
 
 	c := xrich.NewChain()
 	c.Build(recs)
-	t := c.Generate(*maxgen)
-	text := strings.Join(t, " ")
-	log.Println(text)
+
+	if *gendump {
+		ioutil.WriteFile("chain.dump", []byte(c.Dump()), 0644)
+	}
+
+	if *question == "" {
+		t := c.Generate(*maxgen)
+		text := strings.Join(t, " ")
+		log.Println(text)
+	} else {
+		text := c.GenerateAnswer(*question, *maxgen)
+		log.Println(text)
+	}
 
 }

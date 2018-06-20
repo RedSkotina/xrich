@@ -2,6 +2,7 @@ package xrich
 
 import (
 	"bufio"
+	"fmt"
 	"log"
 	"math/rand"
 	"strings"
@@ -15,6 +16,8 @@ const (
 	NONWORD = "\n"
 	// MAXGEN Number of generated words
 	MAXGEN = 50
+	// SEP is separator between phrases
+	SEP = "."
 )
 
 //Record contain a original text block
@@ -120,38 +123,86 @@ func (r *Chain) Build(recs []Record) {
 		if err := scanner.Err(); err != nil {
 			log.Panicln("reading input:", err)
 		}
-		r.add(".", true)
+		r.add(SEP, true)
 	}
 
+}
+
+//Dump internal variables of Chain to text
+func (r *Chain) Dump() string {
+	return fmt.Sprintf("prefix: %v\nstatetab %v\nkeys: %v\n", r.prefix, r.statetab, r.keys)
+}
+
+func (r *Chain) iterateGen() string {
+	sx, ok := r.statetab[r.prefix]
+	var suf string
+	if ok {
+		suf = r.policy.findSuffix(sx)
+		// jump to random after phrase end
+		if suf == SEP {
+			r.prefix = r.policy.findNextPrefix(r)
+			return suf
+		}
+
+	} else {
+		return NONWORD
+	}
+
+	r.prefix.isMarked = false
+	r.prefix.lshift()
+	r.prefix.put(suf)
+	return suf
 }
 
 //Generate return string array of generated text with `nwords` max number words
 func (r *Chain) Generate(nwords int) []string {
 	var res []string
+	if len(r.statetab) == 0 {
+		return res
+	}
 	r.prefix = r.policy.findFirstPrefix(r)
 
 	for i := 0; i < nwords; i++ {
-		sx, ok := r.statetab[r.prefix]
-		var suf string
-		if ok {
-			suf = r.policy.findSuffix(sx)
-			if suf == NONWORD {
-				r.prefix = r.policy.findNextPrefix(r)
-				continue
-			}
-			res = append(res, suf)
+		s := r.iterateGen()
+		res = append(res, s)
+	}
+	return res
+}
 
-		} else {
-			//log.Printf("not found prefix")
-			continue
-		}
+//GenerateAnswer return generated answer for question with `nwords` max number of words or ended with SEP
+func (r *Chain) GenerateAnswer(message string, nwords int) string {
+	var phrases []string
+	var res string
+	if len(r.statetab) == 0 {
+		return res
+	}
 
-		if r.prefix.isMarked {
-			r.prefix.isMarked = false
-		}
+	r.prefix = *newPrefix(NPREF)
+	r.prefix.put(SEP)
+
+	sr := strings.NewReader(message)
+	sc := bufio.NewScanner(sr)
+	sc.Split(bufio.ScanWords)
+
+	for sc.Scan() {
+		w := sc.Text()
+		r.prefix.isMarked = false
 		r.prefix.lshift()
-		r.prefix.put(suf)
+		r.prefix.put(w)
+		var recs []string
+		for i, s := 0, r.iterateGen(); i < nwords && s != NONWORD && s != SEP; i, s = i+1, r.iterateGen() {
+			recs = append(recs, s)
+		}
+		phrases = append(phrases, strings.Join(recs, " "))
 
 	}
+	if err := sc.Err(); err != nil {
+		log.Println("scan error:", err)
+		return res
+	}
+	if len(phrases) > 0 {
+		res = phrases[rand.Intn(len(phrases))]
+	}
+
 	return res
 }
