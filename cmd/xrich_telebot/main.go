@@ -10,6 +10,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"time"
 
 	"strconv"
 
@@ -118,7 +119,10 @@ func main() {
 	updates, err := bot.GetUpdatesChan(u)
 
 	// discard all pending messages
-	//updates.Clear()
+	// Optional: wait for updates and clear them if you don't want to handle
+	// a large backlog of old messages
+	time.Sleep(time.Millisecond * 500)
+	updates.Clear()
 
 	// в канал updates прилетают структуры типа Update
 	// вычитываем их и обрабатываем
