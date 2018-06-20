@@ -1,6 +1,6 @@
-# Xrich
+# Xrich 
 
-Generate random text from original text using Markov chains
+It is Go package for generate random text from original text using Markov chains
 
 ## How to use?
 
@@ -29,3 +29,12 @@ or
 6. Call `GenerateAnswer` method with trigger message `message`
 
 `t := c.GenerateAnswer(message, MAXGEN)`
+
+
+# Xrich-telebot
+
+It is bot for telegram which react on all messages in chat and send generated sentence
+
+## How to use?
+
+`xrich_telebot -token=TELEGRAM_BOT_TOKEN -max=MAXWORDS file1.jsonl file2.jsonl ...`
