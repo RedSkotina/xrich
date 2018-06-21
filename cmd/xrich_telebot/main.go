@@ -52,31 +52,59 @@ func init() {
 	}
 }
 
-func parseAndJoinJSONL(readers []io.Reader) []xrich.Record {
-	var res []xrich.Record
+//Record is structure represent text block from JSON
+type Record struct {
+	Date int64  `json:"date"`
+	Text string `json:"text"`
+}
 
-	for _, r := range readers {
-		sc := bufio.NewScanner(r)
-		for sc.Scan() {
-			var rec xrich.Record
+func parseJSONL(r io.Reader) (res []string) {
+	sc := bufio.NewScanner(r)
+	for sc.Scan() {
+		var rec Record
 
-			lr := strings.NewReader(sc.Text())
-			dec := json.NewDecoder(lr)
-			err := dec.Decode(&rec)
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-			res = append(res, rec)
-		}
-		if err := sc.Err(); err != nil {
-			log.Println("reading input:", err)
+		lr := strings.NewReader(sc.Text())
+		dec := json.NewDecoder(lr)
+		err := dec.Decode(&rec)
+
+		if err != nil {
+			log.Println("parse jsonl", err)
 			continue
 		}
 
+		if err := sc.Err(); err != nil {
+			log.Println("scan jsonl:", err)
+			continue
+		}
+
+		res = append(res, rec.Text)
+
+	}
+	return res
+}
+
+func joinInputs(readers []io.Reader) (res []string) {
+	for _, r := range readers {
+		ss := parseJSONL(r)
+		res = append(res, ss...)
+	}
+	return res
+}
+
+func newReaders(filepathes []string) []io.Reader {
+	var readers []io.Reader
+
+	for _, fpath := range filepathes {
+		file, err := os.Open(fpath)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		r := bufio.NewReader(file)
+		readers = append(readers, r)
 	}
 
-	return res
+	return readers
 }
 
 func main() {
@@ -86,22 +114,11 @@ func main() {
 
 	filenames = append(filenames, flags...)
 
-	var readers []io.Reader
+	rs := newReaders(filenames)
+	t := joinInputs(rs)
 
-	for _, fpath := range filenames {
-		file, err := os.Open(fpath)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		reader := bufio.NewReader(file)
-		readers = append(readers, reader)
-	}
-
-	recs := parseAndJoinJSONL(readers)
-
-	c := xrich.NewChain()
-	c.Build(recs)
+	c := xrich.NewMarkovChain()
+	c.Build(t)
 
 	// используя токен создаем новый инстанс бота
 	bot, err := tgbotapi.NewBotAPI(telegramBotToken)

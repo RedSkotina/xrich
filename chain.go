@@ -20,12 +20,6 @@ const (
 	SEP = "."
 )
 
-//Record contain a original text block
-type Record struct {
-	Date int64  `json:"date"`
-	Text string `json:"text"`
-}
-
 //StringArray is type for suffixes
 type StringArray []string
 
@@ -39,12 +33,10 @@ func newGeneratePolicy() *GeneratePolicy {
 	return new(GeneratePolicy)
 }
 
-func (r *GeneratePolicy) findFirstPrefix(c *Chain) Prefix {
-	//return *newPrefix(NPREF)
+func (r *GeneratePolicy) findFirstPrefix(c *MarkovChain) Prefix {
 	return *c.keys[rand.Intn(len(c.keys))]
 }
-func (r *GeneratePolicy) findNextPrefix(c *Chain) Prefix {
-	//return *newPrefix(NPREF)
+func (r *GeneratePolicy) findNextPrefix(c *MarkovChain) Prefix {
 	return *c.keys[rand.Intn(len(c.keys))]
 }
 func (r *GeneratePolicy) findSuffix(sx StringArray) string {
@@ -76,24 +68,24 @@ func (r *Prefix) put(word string) {
 	r.words[NPREF-1] = word
 }
 
-//Chain are store for state transtions
-type Chain struct {
+//MarkovChain is keep for state transtions
+type MarkovChain struct {
 	statetab map[Prefix]StringArray
 	prefix   Prefix
 	policy   GeneratePolicy
 	keys     []*Prefix
 }
 
-//NewChain create Markov chain
-func NewChain() Chain {
-	c := Chain{}
+//NewMarkovChain create new object of MarkovChain
+func NewMarkovChain() MarkovChain {
+	c := MarkovChain{}
 	c.statetab = make(map[Prefix]StringArray)
 	c.prefix = *newPrefix(NPREF)
 	c.policy = *newGeneratePolicy()
 	return c
 }
 
-func (r *Chain) add(word string, isMarked bool) {
+func (r *MarkovChain) add(word string, isMarked bool) {
 
 	suf, ok := r.statetab[r.prefix]
 	if ok {
@@ -111,29 +103,30 @@ func (r *Chain) add(word string, isMarked bool) {
 
 }
 
-//Build initialize chain with array of text blocks []Record
-func (r *Chain) Build(recs []Record) {
-	for _, rec := range recs {
-		reader := strings.NewReader(rec.Text)
-		scanner := bufio.NewScanner(reader)
-		scanner.Split(bufio.ScanWords)
-		for scanner.Scan() {
-			r.add(scanner.Text(), false)
-		}
-		if err := scanner.Err(); err != nil {
-			log.Panicln("reading input:", err)
+//Build state table for markov chain with array of text blocks
+func (r *MarkovChain) Build(textBlocks []string) {
+	for _, s := range textBlocks {
+		rd := strings.NewReader(s)
+		sc := bufio.NewScanner(rd)
+		sc.Split(bufio.ScanWords)
+		for sc.Scan() {
+			r.add(sc.Text(), false)
+
+			if err := sc.Err(); err != nil {
+				log.Println("scan word error:", err)
+			}
 		}
 		r.add(SEP, true)
 	}
 
 }
 
-//Dump internal variables of Chain to text
-func (r *Chain) Dump() string {
+//Dump internal variables of  Markov chain to text
+func (r *MarkovChain) Dump() string {
 	return fmt.Sprintf("prefix: %v\nstatetab %v\nkeys: %v\n", r.prefix, r.statetab, r.keys)
 }
 
-func (r *Chain) iterateGen() string {
+func (r *MarkovChain) iterateGen() string {
 	sx, ok := r.statetab[r.prefix]
 	var suf string
 	if ok {
@@ -154,9 +147,8 @@ func (r *Chain) iterateGen() string {
 	return suf
 }
 
-//Generate return string array of generated text with `nwords` max number words
-func (r *Chain) Generate(nwords int) string {
-	var res string
+//GenerateSentence return generated text as `string` with max number words `nwords`
+func (r *MarkovChain) GenerateSentence(nwords int) (res string) {
 	var recs []string
 	if len(r.statetab) == 0 {
 		return res
@@ -171,10 +163,10 @@ func (r *Chain) Generate(nwords int) string {
 	return res
 }
 
-//GenerateAnswer return generated answer for question with `nwords` max number of words or ended with SEP
-func (r *Chain) GenerateAnswer(message string, nwords int) string {
+//GenerateAnswer return generated answer for text `message` with `nwords` max number of words or ended with SEP
+func (r *MarkovChain) GenerateAnswer(message string, nwords int) (res string) {
 	var phrases []string
-	var res string
+
 	if len(r.statetab) == 0 {
 		return res
 	}
