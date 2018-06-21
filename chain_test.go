@@ -9,6 +9,9 @@ type Prefix0 struct {
 	words [2]string
 }
 
+// temp variable for avoid optimizing-out result
+var HasKey bool
+
 var m0 map[Prefix0]int
 
 func BenchmarkHashmapSearchEmbedStruct(b *testing.B) {
@@ -16,10 +19,7 @@ func BenchmarkHashmapSearchEmbedStruct(b *testing.B) {
 	m0 = make(map[Prefix0]int)
 	m0[p] = 1
 	for i := 0; i < b.N; i++ {
-		_, ok := m0[p]
-		if ok {
-			continue
-		}
+		_, HasKey = m0[p]
 	}
 }
 
@@ -45,10 +45,7 @@ func getKeyUint32(b *testing.B, hashfn func() uint32) {
 	muint32 = make(map[uint32]int)
 	muint32[hashfn()] = 1
 	for i := 0; i < b.N; i++ {
-		_, ok := muint32[hashfn()]
-		if ok {
-			continue
-		}
+		_, HasKey = muint32[hashfn()]
 	}
 }
 
@@ -76,10 +73,7 @@ func getKeyString(b *testing.B, hashfn func() string) {
 	mstring = make(map[string]int)
 	mstring[hashfn()] = 1
 	for i := 0; i < b.N; i++ {
-		_, ok := mstring[hashfn()]
-		if ok {
-			continue
-		}
+		_, HasKey = mstring[hashfn()]
 	}
 }
 
