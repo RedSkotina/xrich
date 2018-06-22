@@ -136,7 +136,7 @@ func main() {
 	rs := newReaders(filenames)
 	t := joinInputs(rs)
 
-	c := xrich.NewMarkovChain()
+	c := xrich.NewMarkovChain(logger.Desugar())
 	c.Build(t)
 
 	// используя токен создаем новый инстанс бота
