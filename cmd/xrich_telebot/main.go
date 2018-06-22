@@ -8,7 +8,6 @@ import (
 	"log"
 	"math/rand"
 	"os"
-	"reflect"
 	"strings"
 	"time"
 
@@ -151,7 +150,7 @@ func main() {
 		// логируем от кого какое сообщение пришло
 		//log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 
-		if reflect.TypeOf(update.Message.Text).Kind() == reflect.String && update.Message.Text != "" {
+		if update.Message.Text != "" {
 			if rand.Float64() <= answerProbability {
 				reply := c.GenerateAnswer(update.Message.Text, maxgen)
 				// создаем ответное сообщение
