@@ -1,6 +1,6 @@
 # Xrich 
 
-It is Go package for generate random text from original text using Markov chains
+This is a Go package that uses Markov chains to generate random text.
 
 ## How to use?
 
@@ -8,32 +8,32 @@ It is Go package for generate random text from original text using Markov chains
 
 `import "github.com/RedSkotina/xrich"`
 
-2. Create the `Chain` Struct
+2. Create the `MarkovChain` Struct
 
-`c := xrich.NewChain()`
+`c := xrich.NewMarkovChain()`
 
-3. Fill `[]xrich.Record` with text blocks.
+3. Fill variable of type `[]string` with text blocks represent logical pieces of text
 
-Look `parseAndJoinJSONL(readers []io.Reader) []xrich.Record` from `cmd/xrich/main.go` for example.
+`textBlocks := []string{"string1","string2"}`
 
-4. Pass  `[]xrich.Record` to Build for initializing internal state table of the `Chain`
+4. Pass variable to function `Build` for initializing internal state table of the `MarkovChain`
 
-`c.Build(recs)`
+`c.Build(textBlocks)`
 
-5. Call `Generate` method with Maximum word count `MAXGEN`    
+5. Call `GenerateSentense` method with maximum word number `MAXGEN`    
 
-`t := c.Generate(MAXGEN)`
+`s := c.GenerateSentence(MAXGEN)`
 
 or
 
-6. Call `GenerateAnswer` method with trigger message `message`
+6. Call `GenerateAnswer` method with trigger message `message` and maximum word number `MAXGEN`
 
-`t := c.GenerateAnswer(message, MAXGEN)`
+`s := c.GenerateAnswer(message, MAXGEN)`
 
 
 # Xrich-telebot
 
-It is bot for telegram which react on all messages in chat and send generated sentence
+This is a Telegram bot, which reacts on all messages in chat and sends generated text.
 
 ## How to use?
 

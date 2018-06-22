@@ -10,5 +10,12 @@
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+
+#vsc settings
 .vscode/
+
+# custom
 cmd/xrich/debug
+cmd/xrich/xrich
+cmd/xrich_telebot/debug
+cmd/xrich_telebot/xrich_telebot

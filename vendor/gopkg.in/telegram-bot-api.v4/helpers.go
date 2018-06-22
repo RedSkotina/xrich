@@ -19,13 +19,6 @@ func NewMessage(chatID int64, text string) MessageConfig {
 	}
 }
 
-func NewDeleteMessage(chatID int64, messageID int) DeleteMessageConfig {
-	return DeleteMessageConfig{
-		ChatID:    chatID,
-		MessageID: messageID,
-	}
-}
-
 // NewMessageToChannel creates a new Message that is sent to a channel
 // by username.
 //

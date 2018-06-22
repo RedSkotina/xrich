@@ -3,10 +3,9 @@ package xrich
 import (
 	"bufio"
 	"fmt"
-	"log"
-	"math/rand"
 	"strings"
-	"time"
+
+	"go.uber.org/zap"
 )
 
 const (
@@ -14,56 +13,38 @@ const (
 	NPREF = 2
 	// NONWORD is empty word
 	NONWORD = "\n"
-	// MAXGEN Number of generated words
+	// MAXGEN is max number of generated words
 	MAXGEN = 50
 	// SEP is separator between phrases
 	SEP = "."
 )
 
-//Record contain a original text block
-type Record struct {
-	Date int64  `json:"date"`
-	Text string `json:"text"`
-}
-
-//StringArray is type for suffixes
-type StringArray []string
-
-//GeneratePolicy is default policy for select prefix and suffix
-type GeneratePolicy struct {
-}
-
-func newGeneratePolicy() *GeneratePolicy {
-	seed := time.Now().UnixNano()
-	rand.Seed(seed)
-	return new(GeneratePolicy)
-}
-
-func (r *GeneratePolicy) findFirstPrefix(c *Chain) Prefix {
-	//return *newPrefix(NPREF)
-	return *c.keys[rand.Intn(len(c.keys))]
-}
-func (r *GeneratePolicy) findNextPrefix(c *Chain) Prefix {
-	//return *newPrefix(NPREF)
-	return *c.keys[rand.Intn(len(c.keys))]
-}
-func (r *GeneratePolicy) findSuffix(sx StringArray) string {
-	return sx[rand.Intn(len(sx))]
-}
-
 //Prefix is key for map {prefix:suffix}
 type Prefix struct {
-	isMarked bool
-	words    [NPREF]string
+	words [NPREF]string
 }
 
-func newPrefix(nwords int) *Prefix {
-	prefix := Prefix{}
-	for i := 0; i < nwords; i++ {
-		prefix.words[i] = NONWORD
+//Suffix is value for map {prefix:suffix}
+type Suffix struct {
+	isMarked bool
+	word     string
+}
+
+func newPrefix(logger *zap.SugaredLogger, words ...string) *Prefix {
+	if len(words) != NPREF {
+		logger.Fatalw("tried intialize Prefex with invalid len")
 	}
-	prefix.isMarked = true
+	prefix := Prefix{}
+	for i := 0; i < NPREF; i++ {
+		prefix.words[i] = words[i]
+	}
 	return &prefix
+}
+
+func (r *Prefix) fill(word string) {
+	for i := 0; i < NPREF; i++ {
+		r.words[i] = word
+	}
 }
 
 func (r *Prefix) lshift() {
@@ -76,68 +57,75 @@ func (r *Prefix) put(word string) {
 	r.words[NPREF-1] = word
 }
 
-//Chain are store for state transtions
-type Chain struct {
-	statetab map[Prefix]StringArray
+//MarkovChain is keep for state transtions
+type MarkovChain struct {
+	statetab map[Prefix][]Suffix
 	prefix   Prefix
 	policy   GeneratePolicy
 	keys     []*Prefix
+
+	logger *zap.SugaredLogger
 }
 
-//NewChain create Markov chain
-func NewChain() Chain {
-	c := Chain{}
-	c.statetab = make(map[Prefix]StringArray)
-	c.prefix = *newPrefix(NPREF)
-	c.policy = *newGeneratePolicy()
-	return c
+//NewMarkovChain create new object of MarkovChain
+func NewMarkovChain(logger *zap.Logger) MarkovChain {
+	sugaredLogger := logger.Sugar()
+	return MarkovChain{
+		statetab: make(map[Prefix][]Suffix),
+		prefix: *newPrefix(sugaredLogger, NONWORD, NONWORD),
+		policy: new(RandomGeneratePolicy),
+		logger: sugaredLogger,
+	}
 }
 
-func (r *Chain) add(word string, isMarked bool) {
+func (r *MarkovChain) setGeneratePolicy(p GeneratePolicy) {
+	r.policy = p
+}
 
+func (r *MarkovChain) add(word string, isMarked bool) {
 	suf, ok := r.statetab[r.prefix]
 	if ok {
-		suf = append(suf, word)
+		suf = append(suf, Suffix{isMarked, word})
 		r.statetab[r.prefix] = suf
 	} else {
-		p := Prefix{false, r.prefix.words}
-		r.statetab[p] = []string{word}
+		p := Prefix{r.prefix.words}
+		r.statetab[p] = []Suffix{Suffix{isMarked, word}}
 		r.keys = append(r.keys, &p)
 	}
 
-	r.prefix.isMarked = isMarked
 	r.prefix.lshift()
 	r.prefix.put(word)
-
 }
 
-//Build initialize chain with array of text blocks []Record
-func (r *Chain) Build(recs []Record) {
-	for _, rec := range recs {
-		reader := strings.NewReader(rec.Text)
-		scanner := bufio.NewScanner(reader)
-		scanner.Split(bufio.ScanWords)
-		for scanner.Scan() {
-			r.add(scanner.Text(), false)
-		}
-		if err := scanner.Err(); err != nil {
-			log.Panicln("reading input:", err)
+//Build state table for markov chain with array of text blocks
+func (r *MarkovChain) Build(textBlocks []string) {
+	logger := r.logger.With("func", "Build")
+	r.policy.init(r)
+	for _, s := range textBlocks {
+		rd := strings.NewReader(s)
+		sc := bufio.NewScanner(rd)
+		sc.Split(bufio.ScanWords)
+		for sc.Scan() {
+			r.add(sc.Text(), false)
+
+			if err := sc.Err(); err != nil {
+				logger.Errorw("error scanning word", err)
+			}
 		}
 		r.add(SEP, true)
 	}
-
 }
 
-//Dump internal variables of Chain to text
-func (r *Chain) Dump() string {
+//Dump internal variables of  Markov chain to text
+func (r *MarkovChain) Dump() string {
 	return fmt.Sprintf("prefix: %v\nstatetab %v\nkeys: %v\n", r.prefix, r.statetab, r.keys)
 }
 
-func (r *Chain) iterateGen() string {
+func (r *MarkovChain) iterateGen() string {
 	sx, ok := r.statetab[r.prefix]
 	var suf string
 	if ok {
-		suf = r.policy.findSuffix(sx)
+		suf = r.policy.findSuffix(sx).word
 		// jump to random after phrase end
 		if suf == SEP {
 			r.prefix = r.policy.findNextPrefix(r)
@@ -148,15 +136,13 @@ func (r *Chain) iterateGen() string {
 		return NONWORD
 	}
 
-	r.prefix.isMarked = false
 	r.prefix.lshift()
 	r.prefix.put(suf)
 	return suf
 }
 
-//Generate return string array of generated text with `nwords` max number words
-func (r *Chain) Generate(nwords int) string {
-	var res string
+//GenerateSentence return generated text as `string` with max number words `nwords`
+func (r *MarkovChain) GenerateSentence(nwords int) (res string) {
 	var recs []string
 	if len(r.statetab) == 0 {
 		return res
@@ -171,16 +157,16 @@ func (r *Chain) Generate(nwords int) string {
 	return res
 }
 
-//GenerateAnswer return generated answer for question with `nwords` max number of words or ended with SEP
-func (r *Chain) GenerateAnswer(message string, nwords int) string {
+//GenerateAnswer return generated answer for text `message` with `nwords` max number of words or ended with SEP
+func (r *MarkovChain) GenerateAnswer(message string, nwords int) (res string) {
+	logger := r.logger.With("func", "GenerateAnswer")
 	var phrases []string
-	var res string
+
 	if len(r.statetab) == 0 {
 		return res
 	}
 
-	prefix := *newPrefix(NPREF)
-	prefix.put(SEP)
+	prefix := *newPrefix(logger, NONWORD, SEP)
 
 	sr := strings.NewReader(message)
 	sc := bufio.NewScanner(sr)
@@ -188,7 +174,6 @@ func (r *Chain) GenerateAnswer(message string, nwords int) string {
 
 	for sc.Scan() {
 		w := sc.Text()
-		prefix.isMarked = false
 		prefix.lshift()
 		prefix.put(w)
 		r.prefix = prefix
@@ -205,11 +190,11 @@ func (r *Chain) GenerateAnswer(message string, nwords int) string {
 		}
 	}
 	if err := sc.Err(); err != nil {
-		log.Println("scan error:", err)
+		logger.Errorw("error scanning", err)
 		return res
 	}
 	if len(phrases) > 0 {
-		res = phrases[rand.Intn(len(phrases))]
+		res = r.policy.findPhrase(phrases)
 	}
 
 	return res
