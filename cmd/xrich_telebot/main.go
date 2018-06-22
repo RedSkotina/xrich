@@ -152,7 +152,13 @@ func main() {
 
 		if update.Message.Text != "" {
 			if rand.Float64() <= answerProbability {
+				_, err := bot.Send(tgbotapi.NewChatAction(update.Message.Chat.ID, tgbotapi.ChatTyping))
+				if err != nil {
+					log.Printf("Warning, unable to send 'typing' status to the channel: %v", err)
+				}
 				reply := c.GenerateAnswer(update.Message.Text, maxgen)
+				waitTime := time.Duration((rand.Int() % 100000 * len(reply)) % 2000) * time.Millisecond
+				time.Sleep(waitTime)
 				// создаем ответное сообщение
 				msg := tgbotapi.NewMessage(update.Message.Chat.ID, reply)
 				// отправляем
