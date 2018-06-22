@@ -104,7 +104,7 @@ func main() {
 		logger.Fatalw("no valid input files specified")
 	}
 
-	c := xrich.NewMarkovChain()
+	c := xrich.NewMarkovChain(logger.Desugar())
 	c.Build(t)
 
 	if *gendump {

@@ -4,11 +4,18 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 )
+
+var logger *zap.Logger
+
+func init() {
+	logger, _ = zap.NewDevelopment()
+}
 
 func TestGenerate1(t *testing.T) {
 	ss := []string{"a b c"}
-	c := NewMarkovChain()
+	c := NewMarkovChain(logger)
 	c.setGeneratePolicy(GetFirstElementGeneratePolicy{})
 	c.Build(ss)
 	s := c.GenerateSentence(3)
@@ -17,7 +24,7 @@ func TestGenerate1(t *testing.T) {
 
 func TestGenerate2(t *testing.T) {
 	ss := []string{"a b c b", "b c d"}
-	c := NewMarkovChain()
+	c := NewMarkovChain(logger)
 	c.setGeneratePolicy(GetFirstElementGeneratePolicy{})
 	c.Build(ss)
 	s := c.GenerateSentence(4)
