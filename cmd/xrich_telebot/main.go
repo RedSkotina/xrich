@@ -14,7 +14,7 @@ import (
 	"strconv"
 
 	"github.com/RedSkotina/xrich"
-	"github.com/Syfaro/telegram-bot-api"
+	"gopkg.in/telegram-bot-api.v4"
 )
 
 var (

@@ -2,12 +2,6 @@
 
 
 [[projects]]
-  name = "github.com/Syfaro/telegram-bot-api"
-  packages = ["."]
-  revision = "0e0af0c480ea98e982d5f4d45fb39577c6ab1e3e"
-  version = "v4.6.2"
-
-[[projects]]
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   revision = "346938d642f2ec3594ed81d874461961cd0faa76"
@@ -31,9 +25,15 @@
   revision = "a90a01d73ae432e2611d178c18367fbaa13e0154"
   version = "v1.0.1"
 
+[[projects]]
+  name = "gopkg.in/telegram-bot-api.v4"
+  packages = ["."]
+  revision = "0e0af0c480ea98e982d5f4d45fb39577c6ab1e3e"
+  version = "v4.6.2"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "38ba8bb6f08f7af26a912a46f4adfc8f0327f2a97487653ed6fe2ce88ed72e6d"
+  inputs-digest = "fa355078d9483c15ff19b3c07d77145788017b21280ef6a55bd1bc7f8a16346b"
   solver-name = "gps-cdcl"
   solver-version = 1
