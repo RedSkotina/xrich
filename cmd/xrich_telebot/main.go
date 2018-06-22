@@ -5,16 +5,16 @@ import (
 	"encoding/json"
 	"flag"
 	"io"
-	"log"
 	"math/rand"
 	"os"
 	"strings"
 	"time"
-
 	"strconv"
 
 	"github.com/RedSkotina/xrich"
 	"gopkg.in/telegram-bot-api.v4"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 var (
@@ -22,6 +22,7 @@ var (
 	telegramBotToken  string
 	maxgen            int
 	answerProbability float64
+	logger *zap.SugaredLogger
 )
 
 const (
@@ -39,15 +40,31 @@ func init() {
 	if err != nil {
 		prob = DefaultAnswerProbability
 	}
+
+	logToJson := false
+
 	flag.StringVar(&telegramBotToken, "token", os.Getenv("XRICH_TELEGRAM_TOKEN"), "Telegram Bot Token")
 	flag.IntVar(&maxgen, "max", nwords, "max number of generated words")
 	flag.Float64Var(&answerProbability, "p", prob, "answer probability")
+	flag.BoolVar(&logToJson, "logjson", false, "log to json")
 	flag.Parse()
+
+	loggerCfg := zap.NewProductionConfig()
+	if logToJson {
+		loggerCfg.Encoding = "json"
+	} else {
+		encoderConfig := zap.NewProductionEncoderConfig()
+		encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+		loggerCfg.EncoderConfig = encoderConfig
+		loggerCfg.Encoding = "console"
+	}
+	l, _ := loggerCfg.Build()
+	_ = zap.RedirectStdLog(l)
+	logger = l.Sugar()
 
 	// без него не запускаемся
 	if telegramBotToken == "" {
-		log.Print("token is required")
-		os.Exit(1)
+		logger.Fatalw("token is required")
 	}
 }
 
@@ -67,12 +84,12 @@ func parseJSONL(r io.Reader) (res []string) {
 		err := dec.Decode(&rec)
 
 		if err != nil {
-			log.Println("parse jsonl", err)
+			logger.Errorw("failed to decode jsonl", err)
 			continue
 		}
 
 		if err := sc.Err(); err != nil {
-			log.Println("scan jsonl:", err)
+			logger.Errorw("failed to scan jsonl", err)
 			continue
 		}
 
@@ -96,7 +113,10 @@ func newReaders(filepathes []string) []io.Reader {
 	for _, fpath := range filepathes {
 		file, err := os.Open(fpath)
 		if err != nil {
-			log.Println(err)
+			logger.Errorw("failed to open file",
+				"path", fpath,
+				err,
+			)
 			continue
 		}
 		r := bufio.NewReader(file)
@@ -122,10 +142,12 @@ func main() {
 	// используя токен создаем новый инстанс бота
 	bot, err := tgbotapi.NewBotAPI(telegramBotToken)
 	if err != nil {
-		log.Panic(err)
+		logger.Fatalw("failed to initialize botapi", err)
 	}
 
-	log.Printf("Authorized on account %s", bot.Self.UserName)
+	logger.Infow("authorized on account",
+		"account", bot.Self.UserName,
+	)
 
 	// u - структура с конфигом для получения апдейтов
 	u := tgbotapi.NewUpdate(0)
@@ -154,7 +176,7 @@ func main() {
 			if rand.Float64() <= answerProbability {
 				_, err = bot.Send(tgbotapi.NewChatAction(update.Message.Chat.ID, tgbotapi.ChatTyping))
 				if err != nil {
-					log.Printf("Warning, unable to send 'typing' status to the channel: %v", err)
+					logger.Warnw("unable to send 'typing' status to the channel", err)
 				}
 				reply := c.GenerateAnswer(update.Message.Text, maxgen)
 				waitTime := time.Duration((rand.Int() % 100000 * len(reply)) % 2000) * time.Millisecond
@@ -164,7 +186,7 @@ func main() {
 				// отправляем
 				_, err = bot.Send(msg)
 				if err != nil {
-					log.Printf("Error sending message: %v", err)
+					logger.Errorw("unable to send error message", err)
 				}
 			}
 		}

@@ -16,4 +16,6 @@
 
 # custom
 cmd/xrich/debug
+cmd/xrich/xrich
 cmd/xrich_telebot/debug
+cmd/xrich_telebot/xrich_telebot
