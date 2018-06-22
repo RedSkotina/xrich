@@ -152,7 +152,7 @@ func main() {
 
 		if update.Message.Text != "" {
 			if rand.Float64() <= answerProbability {
-				_, err := bot.Send(tgbotapi.NewChatAction(update.Message.Chat.ID, tgbotapi.ChatTyping))
+				_, err = bot.Send(tgbotapi.NewChatAction(update.Message.Chat.ID, tgbotapi.ChatTyping))
 				if err != nil {
 					log.Printf("Warning, unable to send 'typing' status to the channel: %v", err)
 				}
@@ -162,7 +162,10 @@ func main() {
 				// создаем ответное сообщение
 				msg := tgbotapi.NewMessage(update.Message.Chat.ID, reply)
 				// отправляем
-				bot.Send(msg)
+				_, err = bot.Send(msg)
+				if err != nil {
+					log.Printf("Error sending message: %v", err)
+				}
 			}
 		}
 	}
