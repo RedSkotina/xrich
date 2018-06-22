@@ -4,9 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"log"
-	"math/rand"
 	"strings"
-	"time"
 )
 
 const (
@@ -14,48 +12,38 @@ const (
 	NPREF = 2
 	// NONWORD is empty word
 	NONWORD = "\n"
-	// MAXGEN Number of generated words
+	// MAXGEN is max number of generated words
 	MAXGEN = 50
 	// SEP is separator between phrases
 	SEP = "."
 )
 
-//StringArray is type for suffixes
-type StringArray []string
-
-//GeneratePolicy is default policy for select prefix and suffix
-type GeneratePolicy struct {
-}
-
-func newGeneratePolicy() *GeneratePolicy {
-	seed := time.Now().UnixNano()
-	rand.Seed(seed)
-	return new(GeneratePolicy)
-}
-
-func (r *GeneratePolicy) findFirstPrefix(c *MarkovChain) Prefix {
-	return *c.keys[rand.Intn(len(c.keys))]
-}
-func (r *GeneratePolicy) findNextPrefix(c *MarkovChain) Prefix {
-	return *c.keys[rand.Intn(len(c.keys))]
-}
-func (r *GeneratePolicy) findSuffix(sx StringArray) string {
-	return sx[rand.Intn(len(sx))]
-}
-
 //Prefix is key for map {prefix:suffix}
 type Prefix struct {
-	isMarked bool
-	words    [NPREF]string
+	words [NPREF]string
 }
 
-func newPrefix(nwords int) *Prefix {
-	prefix := Prefix{}
-	for i := 0; i < nwords; i++ {
-		prefix.words[i] = NONWORD
+//Suffix is value for map {prefix:suffix}
+type Suffix struct {
+	isMarked bool
+	word     string
+}
+
+func newPrefix(words ...string) *Prefix {
+	if len(words) != NPREF {
+		log.Fatal("Try intialize Prefex with invalid len")
 	}
-	prefix.isMarked = true
+	prefix := Prefix{}
+	for i := 0; i < NPREF; i++ {
+		prefix.words[i] = words[i]
+	}
 	return &prefix
+}
+
+func (r *Prefix) fill(word string) {
+	for i := 0; i < NPREF; i++ {
+		r.words[i] = word
+	}
 }
 
 func (r *Prefix) lshift() {
@@ -70,7 +58,7 @@ func (r *Prefix) put(word string) {
 
 //MarkovChain is keep for state transtions
 type MarkovChain struct {
-	statetab map[Prefix]StringArray
+	statetab map[Prefix][]Suffix
 	prefix   Prefix
 	policy   GeneratePolicy
 	keys     []*Prefix
@@ -79,32 +67,34 @@ type MarkovChain struct {
 //NewMarkovChain create new object of MarkovChain
 func NewMarkovChain() MarkovChain {
 	c := MarkovChain{}
-	c.statetab = make(map[Prefix]StringArray)
-	c.prefix = *newPrefix(NPREF)
-	c.policy = *newGeneratePolicy()
+	c.statetab = make(map[Prefix][]Suffix)
+	c.prefix = *newPrefix(NONWORD, NONWORD)
+	c.policy = new(RandomGeneratePolicy)
 	return c
 }
 
-func (r *MarkovChain) add(word string, isMarked bool) {
+func (r *MarkovChain) setGeneratePolicy(p GeneratePolicy) {
+	r.policy = p
+}
 
+func (r *MarkovChain) add(word string, isMarked bool) {
 	suf, ok := r.statetab[r.prefix]
 	if ok {
-		suf = append(suf, word)
+		suf = append(suf, Suffix{isMarked, word})
 		r.statetab[r.prefix] = suf
 	} else {
-		p := Prefix{false, r.prefix.words}
-		r.statetab[p] = []string{word}
+		p := Prefix{r.prefix.words}
+		r.statetab[p] = []Suffix{Suffix{isMarked, word}}
 		r.keys = append(r.keys, &p)
 	}
 
-	r.prefix.isMarked = isMarked
 	r.prefix.lshift()
 	r.prefix.put(word)
-
 }
 
 //Build state table for markov chain with array of text blocks
 func (r *MarkovChain) Build(textBlocks []string) {
+	r.policy.init(r)
 	for _, s := range textBlocks {
 		rd := strings.NewReader(s)
 		sc := bufio.NewScanner(rd)
@@ -118,7 +108,6 @@ func (r *MarkovChain) Build(textBlocks []string) {
 		}
 		r.add(SEP, true)
 	}
-
 }
 
 //Dump internal variables of  Markov chain to text
@@ -130,7 +119,7 @@ func (r *MarkovChain) iterateGen() string {
 	sx, ok := r.statetab[r.prefix]
 	var suf string
 	if ok {
-		suf = r.policy.findSuffix(sx)
+		suf = r.policy.findSuffix(sx).word
 		// jump to random after phrase end
 		if suf == SEP {
 			r.prefix = r.policy.findNextPrefix(r)
@@ -141,7 +130,6 @@ func (r *MarkovChain) iterateGen() string {
 		return NONWORD
 	}
 
-	r.prefix.isMarked = false
 	r.prefix.lshift()
 	r.prefix.put(suf)
 	return suf
@@ -171,8 +159,7 @@ func (r *MarkovChain) GenerateAnswer(message string, nwords int) (res string) {
 		return res
 	}
 
-	prefix := *newPrefix(NPREF)
-	prefix.put(SEP)
+	prefix := *newPrefix(NONWORD, SEP)
 
 	sr := strings.NewReader(message)
 	sc := bufio.NewScanner(sr)
@@ -180,7 +167,6 @@ func (r *MarkovChain) GenerateAnswer(message string, nwords int) (res string) {
 
 	for sc.Scan() {
 		w := sc.Text()
-		prefix.isMarked = false
 		prefix.lshift()
 		prefix.put(w)
 		r.prefix = prefix
@@ -201,7 +187,7 @@ func (r *MarkovChain) GenerateAnswer(message string, nwords int) (res string) {
 		return res
 	}
 	if len(phrases) > 0 {
-		res = phrases[rand.Intn(len(phrases))]
+		res = r.policy.findPhrase(phrases)
 	}
 
 	return res
