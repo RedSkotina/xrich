@@ -290,7 +290,6 @@ type Sticker struct {
 	Thumbnail *PhotoSize `json:"thumb"`     // optional
 	Emoji     string     `json:"emoji"`     // optional
 	FileSize  int        `json:"file_size"` // optional
-	SetName   string     `json:"set_name"`  // optional
 }
 
 // Video contains information about a video.

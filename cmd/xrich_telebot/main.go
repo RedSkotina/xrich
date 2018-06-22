@@ -8,14 +8,13 @@ import (
 	"log"
 	"math/rand"
 	"os"
-	"reflect"
 	"strings"
 	"time"
 
 	"strconv"
 
 	"github.com/RedSkotina/xrich"
-	"github.com/Syfaro/telegram-bot-api"
+	"gopkg.in/telegram-bot-api.v4"
 )
 
 var (
@@ -151,13 +150,22 @@ func main() {
 		// логируем от кого какое сообщение пришло
 		//log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 
-		if reflect.TypeOf(update.Message.Text).Kind() == reflect.String && update.Message.Text != "" {
+		if update.Message.Text != "" {
 			if rand.Float64() <= answerProbability {
+				_, err = bot.Send(tgbotapi.NewChatAction(update.Message.Chat.ID, tgbotapi.ChatTyping))
+				if err != nil {
+					log.Printf("Warning, unable to send 'typing' status to the channel: %v", err)
+				}
 				reply := c.GenerateAnswer(update.Message.Text, maxgen)
+				waitTime := time.Duration((rand.Int() % 100000 * len(reply)) % 2000) * time.Millisecond
+				time.Sleep(waitTime)
 				// создаем ответное сообщение
 				msg := tgbotapi.NewMessage(update.Message.Chat.ID, reply)
 				// отправляем
-				bot.Send(msg)
+				_, err = bot.Send(msg)
+				if err != nil {
+					log.Printf("Error sending message: %v", err)
+				}
 			}
 		}
 	}
