@@ -34,24 +34,3 @@ func (r RandomGeneratePolicy) findSuffix(sx []Suffix) Suffix {
 func (r RandomGeneratePolicy) findPhrase(ss []string) string {
 	return ss[r.rnd.Intn(len(ss))]
 }
-
-//GetFirstElementGeneratePolicy choose always first element
-type GetFirstElementGeneratePolicy struct {
-	rnd *rand.Rand
-}
-
-func (r GetFirstElementGeneratePolicy) init(c *MarkovChain) {
-}
-
-func (r GetFirstElementGeneratePolicy) findFirstPrefix(c *MarkovChain) Prefix {
-	return *c.keys[0]
-}
-func (r GetFirstElementGeneratePolicy) findNextPrefix(c *MarkovChain) Prefix {
-	return *c.keys[0]
-}
-func (r GetFirstElementGeneratePolicy) findSuffix(sx []Suffix) Suffix {
-	return sx[0]
-}
-func (r GetFirstElementGeneratePolicy) findPhrase(ss []string) string {
-	return ss[0]
-}

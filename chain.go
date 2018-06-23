@@ -4,7 +4,10 @@ import (
 	"bufio"
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 )
 
 const (
@@ -18,6 +21,77 @@ const (
 	SEP = "."
 )
 
+var reClearTrash = regexp.MustCompile(`[^A-zА-я\p{P}\s]`)
+var reIsWord = regexp.MustCompile(`.*[A-zА-я].*`)
+var reMultiPunct = regexp.MustCompile(`(\p{P}\s){2,}`)
+
+func clearString(s string) string {
+	return reClearTrash.ReplaceAllString(s, "")
+}
+
+// ScanWordsAndPunct is a split function for a Scanner that returns each
+// space or punctuation separated word or punctuation  , with surrounding spaces deleted. It will
+// never return an empty string. The definition of space is set by
+// unicode.IsSpace. The definition of punct is set by unicode.IsPunct.
+func ScanWordsAndPunct(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	// Skip leading spaces.
+	start := 0
+	for width := 0; start < len(data); start += width {
+		var r rune
+		r, width = utf8.DecodeRune(data[start:])
+		if !unicode.IsSpace(r) {
+			break
+		}
+	}
+	// Scan until space, marking end of word.
+	for width, i := 0, start; i < len(data); i += width {
+		var r rune
+		r, width = utf8.DecodeRune(data[i:])
+		if unicode.IsPunct(r) && i != start {
+			return i, data[start:i], nil
+		}
+		if unicode.IsSpace(r) {
+			return i + width, data[start:i], nil
+		}
+	}
+	// If we're at EOF, we have a final, non-empty, non-terminated word. Return it.
+	if atEOF && len(data) > start {
+		return len(data), data[start:], nil
+	}
+	// Request more data.
+	return start, nil, nil
+}
+
+// ScanOnlyWords is a split function for a Scanner that returns each
+// space or punctuation separated word , with surrounding spaces and punctuation deleted. It will
+// never return an empty string. The definition of space is set by
+// unicode.IsSpace. The definition of punct is set by unicode.IsPunct.
+func ScanOnlyWords(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	// Skip leading spaces.
+	start := 0
+	for width := 0; start < len(data); start += width {
+		var r rune
+		r, width = utf8.DecodeRune(data[start:])
+		if !unicode.IsSpace(r) && !unicode.IsPunct(r) {
+			break
+		}
+	}
+	// Scan until space, marking end of word.
+	for width, i := 0, start; i < len(data); i += width {
+		var r rune
+		r, width = utf8.DecodeRune(data[i:])
+		if unicode.IsSpace(r) || unicode.IsPunct(r) {
+			return i + width, data[start:i], nil
+		}
+	}
+	// If we're at EOF, we have a final, non-empty, non-terminated word. Return it.
+	if atEOF && len(data) > start {
+		return len(data), data[start:], nil
+	}
+	// Request more data.
+	return start, nil, nil
+}
+
 //Prefix is key for map {prefix:suffix}
 type Prefix struct {
 	words [NPREF]string
@@ -25,8 +99,8 @@ type Prefix struct {
 
 //Suffix is value for map {prefix:suffix}
 type Suffix struct {
-	isMarked bool
-	word     string
+	sol  bool //start-of-line
+	word string
 }
 
 func newPrefix(words ...string) *Prefix {
@@ -56,10 +130,15 @@ func (r *Prefix) put(word string) {
 	r.words[NPREF-1] = word
 }
 
-//MarkovChain is keep for state transtions
+//Context keep current state
+type Context struct {
+	prefix      Prefix
+	preLastWord string
+}
+
+//MarkovChain are main structure that hold states transitions
 type MarkovChain struct {
 	statetab map[Prefix][]Suffix
-	prefix   Prefix
 	policy   GeneratePolicy
 	keys     []*Prefix
 }
@@ -68,118 +147,162 @@ type MarkovChain struct {
 func NewMarkovChain() MarkovChain {
 	c := MarkovChain{}
 	c.statetab = make(map[Prefix][]Suffix)
-	c.prefix = *newPrefix(NONWORD, NONWORD)
 	c.policy = new(RandomGeneratePolicy)
 	return c
 }
 
-func (r *MarkovChain) setGeneratePolicy(p GeneratePolicy) {
+//SetGeneratePolicy allow change choice policy of elements in key transitions
+func (r *MarkovChain) SetGeneratePolicy(p GeneratePolicy) {
 	r.policy = p
 }
 
-func (r *MarkovChain) add(word string, isMarked bool) {
-	suf, ok := r.statetab[r.prefix]
+func isWord(s string) bool {
+	return reIsWord.MatchString(s)
+}
+
+func (r *MarkovChain) stepBuild(ctx *Context, word string, sol bool) {
+
+	r.addWord(ctx, word, sol)
+
+	// if "a , [, b] c" then we add [a b] with same suffix c
+	if ctx.preLastWord != "" && isWord(word) && !isWord(ctx.prefix.words[0]) && isWord(ctx.prefix.words[NPREF-1]) {
+		ctx.prefix.words[0] = ctx.preLastWord
+		r.addWord(ctx, word, sol)
+		ctx.preLastWord = ""
+	}
+
+	// example: "[? a] ."
+	if isWord(ctx.prefix.words[NPREF-1]) && !isWord(word) {
+		ctx.preLastWord = ctx.prefix.words[NPREF-1]
+	}
+
+	ctx.prefix.lshift()
+	ctx.prefix.put(word)
+}
+
+//Add state in states transitions table and mark/unmark him as start of line using `sol`
+func (r *MarkovChain) addWord(ctx *Context, word string, sol bool) {
+
+	suf, ok := r.statetab[ctx.prefix]
 	if ok {
-		suf = append(suf, Suffix{isMarked, word})
-		r.statetab[r.prefix] = suf
+		suf = append(suf, Suffix{sol, word})
+		r.statetab[ctx.prefix] = suf
 	} else {
-		p := Prefix{r.prefix.words}
-		r.statetab[p] = []Suffix{Suffix{isMarked, word}}
+		p := Prefix{ctx.prefix.words}
+		r.statetab[p] = []Suffix{Suffix{sol, word}}
 		r.keys = append(r.keys, &p)
 	}
 
-	r.prefix.lshift()
-	r.prefix.put(word)
 }
 
-//Build state table for markov chain with array of text blocks
+//Build states transition table for markov chain from text blocks
 func (r *MarkovChain) Build(textBlocks []string) {
+	ctx := new(Context)
+	ctx.prefix = *newPrefix(NONWORD, NONWORD)
 	r.policy.init(r)
-	for _, s := range textBlocks {
+	// TODO: split punctuation?
+
+	for i, s := range textBlocks {
+		s = clearString(s)
 		rd := strings.NewReader(s)
 		sc := bufio.NewScanner(rd)
-		sc.Split(bufio.ScanWords)
+		sc.Split(ScanWordsAndPunct)
 		for sc.Scan() {
-			r.add(sc.Text(), false)
-
-			if err := sc.Err(); err != nil {
-				log.Println("scan word error:", err)
+			sol := true
+			if i >= NPREF {
+				sol = false
 			}
+			r.stepBuild(ctx, sc.Text(), sol)
+
 		}
-		r.add(SEP, true)
+		if err := sc.Err(); err != nil {
+			log.Println("scan word error:", err)
+		}
+		r.stepBuild(ctx, NONWORD, false)
 	}
 }
 
 //Dump internal variables of  Markov chain to text
 func (r *MarkovChain) Dump() string {
-	return fmt.Sprintf("prefix: %v\nstatetab %v\nkeys: %v\n", r.prefix, r.statetab, r.keys)
+	return fmt.Sprintf("statetab %v\nkeys: %v\n", r.statetab, r.keys)
 }
 
-func (r *MarkovChain) iterateGen() string {
-	sx, ok := r.statetab[r.prefix]
-	var suf string
-	if ok {
-		suf = r.policy.findSuffix(sx).word
-		// jump to random after phrase end
-		if suf == SEP {
-			r.prefix = r.policy.findNextPrefix(r)
-			return suf
-		}
-
-	} else {
+//generationStep generate one word for context `ctx` and update context
+func (r *MarkovChain) generationStep(ctx *Context) string {
+	sx, ok := r.statetab[ctx.prefix]
+	if !ok {
 		return NONWORD
 	}
 
-	r.prefix.lshift()
-	r.prefix.put(suf)
+	suf := r.policy.findSuffix(sx).word
+
+	if suf != NONWORD {
+		ctx.prefix.lshift()
+		ctx.prefix.put(suf)
+	} else {
+		// phrase is ended
+		ctx.prefix = r.policy.findNextPrefix(r)
+		suf = SEP
+	}
 	return suf
 }
 
-//GenerateSentence return generated text as `string` with max number words `nwords`
+//GenerateSentence return generated text as `string` with max number of words `nwords`
 func (r *MarkovChain) GenerateSentence(nwords int) (res string) {
-	var recs []string
 	if len(r.statetab) == 0 {
 		return res
 	}
-	r.prefix = r.policy.findFirstPrefix(r)
+	var words []string
+	ctx := new(Context)
+	ctx.prefix = r.policy.findFirstPrefix(r)
 
 	for i := 0; i < nwords; i++ {
-		s := r.iterateGen()
-		recs = append(recs, s)
+		s := r.generationStep(ctx)
+		words = append(words, s)
 	}
-	res = strings.Join(recs, " ")
+
+	res = strings.Join(words, " ")
+	//TODO: remove duplicated punctuation
 	return res
 }
 
-//GenerateAnswer return generated answer for text `message` with `nwords` max number of words or ended with SEP
+//GenerateAnswer return generated answer for text `message` with max number of words `nwords` or ended with NONWORD/SEP
 func (r *MarkovChain) GenerateAnswer(message string, nwords int) (res string) {
-	var phrases []string
-
 	if len(r.statetab) == 0 {
 		return res
 	}
+	var phrases []string
 
-	prefix := *newPrefix(NONWORD, SEP)
+	prefix := *newPrefix(NONWORD, NONWORD)
 
 	sr := strings.NewReader(message)
 	sc := bufio.NewScanner(sr)
-	sc.Split(bufio.ScanWords)
+	sc.Split(ScanOnlyWords)
 
 	for sc.Scan() {
 		w := sc.Text()
+
 		prefix.lshift()
 		prefix.put(w)
-		r.prefix = prefix
-		var recs []string
-		for i, s := 0, r.iterateGen(); i < nwords && s != NONWORD && s != SEP; i, s = i+1, r.iterateGen() {
-			recs = append(recs, s)
+
+		ctx := new(Context)
+		ctx.prefix = prefix
+
+		var words []string
+		for i, s := 0, r.generationStep(ctx); i < nwords && s != NONWORD && s != SEP; i, s = i+1, r.generationStep(ctx) {
+			words = append(words, s)
 		}
-		if len(recs) > 0 {
-			recs = append(prefix.words[:], recs...)
-			if recs[0] == SEP {
-				recs = recs[1:] //Remove Sep from start of phrase . UGLY!!!
+		if len(words) > 0 {
+			//remove nonword from start
+			k := 0
+			for i := 0; i < NPREF && prefix.words[i] == NONWORD; i++ {
+				k++
 			}
-			phrases = append(phrases, strings.Join(recs, " "))
+			words = append(prefix.words[k:NPREF], words...)
+			//TODO: remove duplicated punctuation
+			s := strings.Join(words, " ")
+			s = reMultiPunct.ReplaceAllString(s, "$1")
+			phrases = append(phrases, s)
 		}
 	}
 	if err := sc.Err(); err != nil {
