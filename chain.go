@@ -3,11 +3,12 @@ package xrich
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"regexp"
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+    "go.uber.org/zap"
 )
 
 const (
@@ -103,9 +104,9 @@ type Suffix struct {
 	word string
 }
 
-func newPrefix(words ...string) *Prefix {
+func newPrefix(logger *zap.SugaredLogger, words ...string) *Prefix {
 	if len(words) != NPREF {
-		log.Fatal("Try intialize Prefex with invalid len")
+		logger.Fatalw("tried intialize Prefex with invalid len")
 	}
 	prefix := Prefix{}
 	for i := 0; i < NPREF; i++ {
@@ -139,16 +140,20 @@ type Context struct {
 //MarkovChain are main structure that hold states transitions
 type MarkovChain struct {
 	statetab map[Prefix][]Suffix
+	prefix   Prefix
 	policy   GeneratePolicy
 	keys     []*Prefix
+    logger *zap.SugaredLogger
 }
 
 //NewMarkovChain create new object of MarkovChain
-func NewMarkovChain() MarkovChain {
-	c := MarkovChain{}
-	c.statetab = make(map[Prefix][]Suffix)
-	c.policy = new(RandomGeneratePolicy)
-	return c
+func NewMarkovChain(logger *zap.Logger) MarkovChain {
+	sugaredLogger := logger.Sugar()
+	return MarkovChain{
+		statetab: make(map[Prefix][]Suffix),
+        policy: new(RandomGeneratePolicy),
+		logger: sugaredLogger,
+	}
 }
 
 //SetGeneratePolicy allow change choice policy of elements in key transitions
@@ -193,12 +198,15 @@ func (r *MarkovChain) addWord(ctx *Context, word string, sol bool) {
 		r.keys = append(r.keys, &p)
 	}
 
+	r.prefix.lshift()
+	r.prefix.put(word)
 }
 
 //Build states transition table for markov chain from text blocks
 func (r *MarkovChain) Build(textBlocks []string) {
+	logger := r.logger.With("func", "Build")
 	ctx := new(Context)
-	ctx.prefix = *newPrefix(NONWORD, NONWORD)
+	ctx.prefix = *newPrefix(logger, NONWORD, NONWORD)
 	r.policy.init(r)
 	// TODO: split punctuation?
 
@@ -214,9 +222,12 @@ func (r *MarkovChain) Build(textBlocks []string) {
 			}
 			r.stepBuild(ctx, sc.Text(), sol)
 
+			if err := sc.Err(); err != nil {
+				log.Println("scan word error:", err)
+			}
 		}
 		if err := sc.Err(); err != nil {
-			log.Println("scan word error:", err)
+			logger.Errorw("error scanning word", err)
 		}
 		r.stepBuild(ctx, NONWORD, false)
 	}
@@ -244,11 +255,15 @@ func (r *MarkovChain) generationStep(ctx *Context) string {
 		ctx.prefix = r.policy.findNextPrefix(r)
 		suf = SEP
 	}
+
+	r.prefix.lshift()
+	r.prefix.put(suf)
 	return suf
 }
 
 //GenerateSentence return generated text as `string` with max number of words `nwords`
 func (r *MarkovChain) GenerateSentence(nwords int) (res string) {
+	var recs []string
 	if len(r.statetab) == 0 {
 		return res
 	}
@@ -268,12 +283,15 @@ func (r *MarkovChain) GenerateSentence(nwords int) (res string) {
 
 //GenerateAnswer return generated answer for text `message` with max number of words `nwords` or ended with NONWORD/SEP
 func (r *MarkovChain) GenerateAnswer(message string, nwords int) (res string) {
+	logger := r.logger.With("func", "GenerateAnswer")
+	var phrases []string
+
 	if len(r.statetab) == 0 {
 		return res
 	}
 	var phrases []string
 
-	prefix := *newPrefix(NONWORD, NONWORD)
+	prefix := *newPrefix(logger, NONWORD, NONWORD)
 
 	sr := strings.NewReader(message)
 	sc := bufio.NewScanner(sr)
@@ -306,7 +324,7 @@ func (r *MarkovChain) GenerateAnswer(message string, nwords int) (res string) {
 		}
 	}
 	if err := sc.Err(); err != nil {
-		log.Println("scan error:", err)
+		logger.Errorw("error scanning", err)
 		return res
 	}
 	if len(phrases) > 0 {
