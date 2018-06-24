@@ -290,7 +290,6 @@ func (r *MarkovChain) GenerateAnswer(message string, nwords int) (res string) {
 	sr := strings.NewReader(message)
 	sc := bufio.NewScanner(sr)
 	sc.Split(ScanOnlyWords)
-
 	for sc.Scan() {
 		w := sc.Text()
 

@@ -41,16 +41,16 @@ func init() {
 		prob = DefaultAnswerProbability
 	}
 
-	logToJson := false
+	logToJSON := false
 
 	flag.StringVar(&telegramBotToken, "token", os.Getenv("XRICH_TELEGRAM_TOKEN"), "Telegram Bot Token")
 	flag.IntVar(&maxgen, "max", nwords, "max number of generated words")
 	flag.Float64Var(&answerProbability, "p", prob, "answer probability")
-	flag.BoolVar(&logToJson, "logjson", false, "log to json")
+	flag.BoolVar(&logToJSON, "logjson", false, "log to json")
 	flag.Parse()
 
 	loggerCfg := zap.NewProductionConfig()
-	if logToJson {
+	if logToJSON {
 		loggerCfg.Encoding = "json"
 	} else {
 		encoderConfig := zap.NewProductionEncoderConfig()
@@ -127,10 +127,12 @@ func newReaders(filepathes []string) []io.Reader {
 }
 
 func main() {
+	var filenames []string
 	filenamesEnv := os.Getenv("XRICH_INPUT_FILES")
-	filenames := strings.Split(filenamesEnv, ";")
+	if filenamesEnv != "" {
+		filenames = strings.Split(filenamesEnv, ";")
+	}
 	flags := flag.Args()
-
 	filenames = append(filenames, flags...)
 
 	rs := newReaders(filenames)
@@ -174,12 +176,12 @@ func main() {
 
 		if update.Message.Text != "" {
 			if rand.Float64() <= answerProbability {
-				_, err = bot.Send(tgbotapi.NewChatAction(update.Message.Chat.ID, tgbotapi.ChatTyping))
-				if err != nil {
-					logger.Warnw("unable to send 'typing' status to the channel", err)
-				}
 				reply := c.GenerateAnswer(update.Message.Text, maxgen)
 				if reply != "" {
+					_, err = bot.Send(tgbotapi.NewChatAction(update.Message.Chat.ID, tgbotapi.ChatTyping))
+					if err != nil {
+						logger.Warnw("unable to send 'typing' status to the channel", err)
+					}
 					waitTime := time.Duration((rand.Int()%100000*len(reply))%2000) * time.Millisecond
 					time.Sleep(waitTime)
 					// создаем ответное сообщение
