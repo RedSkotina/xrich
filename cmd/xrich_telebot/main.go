@@ -179,14 +179,16 @@ func main() {
 					logger.Warnw("unable to send 'typing' status to the channel", err)
 				}
 				reply := c.GenerateAnswer(update.Message.Text, maxgen)
-				waitTime := time.Duration((rand.Int()%100000*len(reply))%2000) * time.Millisecond
-				time.Sleep(waitTime)
-				// создаем ответное сообщение
-				msg := tgbotapi.NewMessage(update.Message.Chat.ID, reply)
-				// отправляем
-				_, err = bot.Send(msg)
-				if err != nil {
-					logger.Errorw("unable to send error message", err)
+				if reply != "" {
+					waitTime := time.Duration((rand.Int()%100000*len(reply))%2000) * time.Millisecond
+					time.Sleep(waitTime)
+					// создаем ответное сообщение
+					msg := tgbotapi.NewMessage(update.Message.Chat.ID, reply)
+					// отправляем
+					_, err = bot.Send(msg)
+					if err != nil {
+						logger.Errorw("unable to send error message", err)
+					}
 				}
 			}
 		}
