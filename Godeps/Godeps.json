@@ -1,0 +1,65 @@
+{
+	"ImportPath": "github.com/RedSkotina/xrich",
+	"GoVersion": "go1.10",
+	"GodepVersion": "v80",
+	"Packages": [
+		"./cmd/.."
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/davecgh/go-spew/spew",
+			"Comment": "v1.1.0-12-g8991bc2",
+			"Rev": "8991bc29aa16c548c550c7ff78260e27b9ab7c73"
+		},
+		{
+			"ImportPath": "github.com/pmezard/go-difflib/difflib",
+			"Comment": "v1.0.0",
+			"Rev": "792786c7400a136282c1664665ae0a8db921c6c2"
+		},
+		{
+			"ImportPath": "github.com/stretchr/testify/assert",
+			"Comment": "v1.2.2",
+			"Rev": "f35b8ab0b5a2cef36673838d662e249dd9c94686"
+		},
+		{
+			"ImportPath": "go.uber.org/atomic",
+			"Comment": "v1.3.2",
+			"Rev": "1ea20fb1cbb1cc08cbd0d913a96dead89aa18289"
+		},
+		{
+			"ImportPath": "go.uber.org/multierr",
+			"Comment": "v1.1.0-2-gddea229",
+			"Rev": "ddea229ff1dff9e6fe8a6c0344ac73b09e81fce5"
+		},
+		{
+			"ImportPath": "go.uber.org/zap",
+			"Comment": "v1.8.0-5-g88c71ae",
+			"Rev": "88c71ae3d702167d7f8be42c0e0b68bfa4d1707e"
+		},
+		{
+			"ImportPath": "go.uber.org/zap/buffer",
+			"Comment": "v1.8.0-5-g88c71ae",
+			"Rev": "88c71ae3d702167d7f8be42c0e0b68bfa4d1707e"
+		},
+		{
+			"ImportPath": "go.uber.org/zap/internal/bufferpool",
+			"Comment": "v1.8.0-5-g88c71ae",
+			"Rev": "88c71ae3d702167d7f8be42c0e0b68bfa4d1707e"
+		},
+		{
+			"ImportPath": "go.uber.org/zap/internal/color",
+			"Comment": "v1.8.0-5-g88c71ae",
+			"Rev": "88c71ae3d702167d7f8be42c0e0b68bfa4d1707e"
+		},
+		{
+			"ImportPath": "go.uber.org/zap/internal/exit",
+			"Comment": "v1.8.0-5-g88c71ae",
+			"Rev": "88c71ae3d702167d7f8be42c0e0b68bfa4d1707e"
+		},
+		{
+			"ImportPath": "go.uber.org/zap/zapcore",
+			"Comment": "v1.8.0-5-g88c71ae",
+			"Rev": "88c71ae3d702167d7f8be42c0e0b68bfa4d1707e"
+		}
+	]
+}

@@ -75,8 +75,9 @@ func TestAnswer3(t *testing.T) {
 	c := NewMarkovChain(logger)
 	c.SetGeneratePolicy(testGeneratePolicy{})
 	c.Build(ss)
+	fmt.Println(c.Dump())
 	s := c.GenerateAnswer("b", 6)
-	assert.Equal(t, "b c b", s)
+	assert.Equal(t, "b c - b", s)
 }
 
 func TestAnswer4(t *testing.T) {
@@ -84,7 +85,6 @@ func TestAnswer4(t *testing.T) {
 	c := NewMarkovChain(logger)
 	c.SetGeneratePolicy(testGeneratePolicy{})
 	c.Build(ss)
-	fmt.Println(c.Dump())
 	s := c.GenerateAnswer("a", 10)
 	assert.Equal(t, "a ,", s)
 }
@@ -94,7 +94,6 @@ func TestAnswer5(t *testing.T) {
 	c := NewMarkovChain(logger)
 	c.SetGeneratePolicy(testGeneratePolicy{})
 	c.Build(ss)
-	fmt.Println(c.Dump())
 	s := c.GenerateAnswer("b,c", 10)
 	assert.Equal(t, "b c b", s)
 }
