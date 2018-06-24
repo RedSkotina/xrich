@@ -40,3 +40,8 @@
 [prune]
   go-tests = true
   unused-packages = true
+
+[metadata.heroku]
+  root-package = "xrich_telebot"
+  go-version = "go1.10.2"
+  install = [ "./cmd/..." ]
