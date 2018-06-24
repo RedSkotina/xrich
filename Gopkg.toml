@@ -43,5 +43,5 @@
 
 [metadata.heroku]
   root-package = "xrich_telebot"
-  go-version = "go1.10.2"
-  install = [ "./cmd/..." ]
+  go-version = "go1.10"
+  install = [ "./cmd/...",  "./..."]
