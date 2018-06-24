@@ -32,12 +32,13 @@
   version = "v1.3.2"
 
 [[projects]]
+  branch = "master"
   name = "go.uber.org/multierr"
   packages = ["."]
-  revision = "3c4937480c32f4c13a875a1829af76c98ca3d40a"
-  version = "v1.1.0"
+  revision = "ddea229ff1dff9e6fe8a6c0344ac73b09e81fce5"
 
 [[projects]]
+  branch = "master"
   name = "go.uber.org/zap"
   packages = [
     ".",
@@ -47,8 +48,7 @@
     "internal/exit",
     "zapcore"
   ]
-  revision = "eeedf312bc6c57391d84767a4cd413f02a917974"
-  version = "v1.8.0"
+  revision = "88c71ae3d702167d7f8be42c0e0b68bfa4d1707e"
 
 [[projects]]
   name = "gopkg.in/telegram-bot-api.v4"
@@ -59,6 +59,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a687a4f6fcde706c7de97a4dd63a929d7b59cc9627794619a9479a52f9002db2"
+  inputs-digest = "615f2e09dad83a4f8dfcd26250f8b9f28132d46426ddc3f95d824404893ec8f9"
   solver-name = "gps-cdcl"
   solver-version = 1
