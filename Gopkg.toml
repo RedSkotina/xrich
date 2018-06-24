@@ -42,6 +42,6 @@
   unused-packages = true
 
 [metadata.heroku]
-  root-package = "xrich_telebot"
+  root-package = "github.com/RedSkotina/xrich"
   go-version = "go1.10"
-  install = [ "./..."]
+  install = [ "./cmd/..."]
