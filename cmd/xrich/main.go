@@ -79,22 +79,22 @@ func main() {
 	maxgen := flag.Int("l", xrich.MAXGEN, "number of generated words")
 	question := flag.String("q", "", "Find answer for question")
 	gendump := flag.Bool("d", false, "Dump state table")
-	logToJson := flag.Bool("logjson", false, "log to json")
+	logToJSON := flag.Bool("logjson", false, "log to json")
 
 	flag.Parse()
 
 	loggerCfg := zap.NewProductionConfig()
-        if *logToJson {
-                loggerCfg.Encoding = "json"
-        } else {
-                encoderConfig := zap.NewProductionEncoderConfig()
-                encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-                loggerCfg.EncoderConfig = encoderConfig
-                loggerCfg.Encoding = "console"
-        }
-        l, _ := loggerCfg.Build()
-        _ = zap.RedirectStdLog(l)
-        logger = l.Sugar()
+	if *logToJSON {
+		loggerCfg.Encoding = "json"
+	} else {
+		encoderConfig := zap.NewProductionEncoderConfig()
+		encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+		loggerCfg.EncoderConfig = encoderConfig
+		loggerCfg.Encoding = "console"
+	}
+	l, _ := loggerCfg.Build()
+	_ = zap.RedirectStdLog(l)
+	logger = l.Sugar()
 
 	flags := flag.Args()
 

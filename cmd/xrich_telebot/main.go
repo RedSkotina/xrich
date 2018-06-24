@@ -7,14 +7,14 @@ import (
 	"io"
 	"math/rand"
 	"os"
+	"strconv"
 	"strings"
 	"time"
-	"strconv"
 
 	"github.com/RedSkotina/xrich"
-	"gopkg.in/telegram-bot-api.v4"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"gopkg.in/telegram-bot-api.v4"
 )
 
 var (
@@ -22,7 +22,7 @@ var (
 	telegramBotToken  string
 	maxgen            int
 	answerProbability float64
-	logger *zap.SugaredLogger
+	logger            *zap.SugaredLogger
 )
 
 const (
@@ -179,7 +179,7 @@ func main() {
 					logger.Warnw("unable to send 'typing' status to the channel", err)
 				}
 				reply := c.GenerateAnswer(update.Message.Text, maxgen)
-				waitTime := time.Duration((rand.Int() % 100000 * len(reply)) % 2000) * time.Millisecond
+				waitTime := time.Duration((rand.Int()%100000*len(reply))%2000) * time.Millisecond
 				time.Sleep(waitTime)
 				// создаем ответное сообщение
 				msg := tgbotapi.NewMessage(update.Message.Chat.ID, reply)

@@ -258,6 +258,8 @@ func (r *MarkovChain) GenerateSentence(nwords int) (res string) {
 	if len(r.statetab) == 0 {
 		return res
 	}
+	r.policy.init(r)
+
 	var words []string
 	ctx := new(Context)
 	ctx.prefix = r.policy.findFirstPrefix(r)
@@ -268,7 +270,7 @@ func (r *MarkovChain) GenerateSentence(nwords int) (res string) {
 	}
 
 	res = strings.Join(words, " ")
-	//TODO: remove duplicated punctuation
+	res = reMultiPunct.ReplaceAllString(res, "$1")
 	return res
 }
 
@@ -279,6 +281,8 @@ func (r *MarkovChain) GenerateAnswer(message string, nwords int) (res string) {
 	if len(r.statetab) == 0 {
 		return res
 	}
+	r.policy.init(r)
+
 	var phrases []string
 
 	prefix := *newPrefix(logger, NONWORD, NONWORD)
@@ -307,7 +311,6 @@ func (r *MarkovChain) GenerateAnswer(message string, nwords int) (res string) {
 				k++
 			}
 			words = append(prefix.words[k:NPREF], words...)
-			//TODO: remove duplicated punctuation
 			s := strings.Join(words, " ")
 			s = reMultiPunct.ReplaceAllString(s, "$1")
 			phrases = append(phrases, s)

@@ -17,7 +17,7 @@ type RandomGeneratePolicy struct {
 	rnd *rand.Rand
 }
 
-func (r RandomGeneratePolicy) init(c *MarkovChain) {
+func (r *RandomGeneratePolicy) init(c *MarkovChain) {
 	r.rnd = rand.New(rand.NewSource(time.Now().UnixNano()))
 }
 
