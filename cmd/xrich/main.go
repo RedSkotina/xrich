@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"github.com/RedSkotina/xrich"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -76,15 +78,30 @@ func newReaders(filepathes []string) []io.Reader {
 }
 
 func main() {
-	maxgen := flag.Int("l", xrich.MAXGEN, "number of generated words")
-	question := flag.String("q", "", "Find answer for question")
-	gendump := flag.Bool("d", false, "Dump state table")
-	logToJSON := flag.Bool("logjson", false, "log to json")
+	// FLAG (PRIMARY):
+	flag.Int("maxwords", xrich.MAXGEN, "number of generated words")
+	flag.String("question", "", "find answer for question")
+	flag.Bool("gendump", false, "dump state table")
+	flag.Bool("logjson", false, "log to json")
 
-	flag.Parse()
+	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
+
+	// ENV (SECONDARY):
+	viper.SetEnvPrefix("XRICH")
+
+	viper.BindEnv("maxwords", "MAX_WORDS")
+
+	// DEFAULT:
+	viper.SetDefault("maxwords", xrich.MAXGEN)
+
+	// PARSE:
+	pflag.Parse()
+	viper.BindPFlags(pflag.CommandLine)
+
+	flags := pflag.Args()
 
 	loggerCfg := zap.NewProductionConfig()
-	if *logToJSON {
+	if viper.GetBool("logjson") {
 		loggerCfg.Encoding = "json"
 	} else {
 		encoderConfig := zap.NewProductionEncoderConfig()
@@ -96,8 +113,6 @@ func main() {
 	_ = zap.RedirectStdLog(l)
 	logger = l.Sugar()
 
-	flags := flag.Args()
-
 	rs := newReaders(flags)
 	t := joinInputs(rs)
 	if len(t) == 0 {
@@ -107,15 +122,15 @@ func main() {
 	c := xrich.NewMarkovChain(logger.Desugar())
 	c.Build(t)
 
-	if *gendump {
+	if viper.GetBool("gendump") {
 		ioutil.WriteFile("markovchain.dump", []byte(c.Dump()), 0644)
 	}
 
-	if *question == "" {
-		text := c.GenerateSentence(*maxgen)
+	if viper.GetString("question") == "" {
+		text := c.GenerateSentence(viper.GetInt("maxwords"))
 		fmt.Println(text)
 	} else {
-		text := c.GenerateAnswer(*question, *maxgen)
+		text := c.GenerateAnswer(viper.GetString("question"), viper.GetInt("maxwords"))
 		fmt.Println(text)
 	}
 

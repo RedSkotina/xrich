@@ -7,50 +7,49 @@ import (
 	"io"
 	"math/rand"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/RedSkotina/xrich"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/telegram-bot-api.v4"
 )
 
 var (
-	// глобальная переменная в которой храним токен
-	telegramBotToken  string
-	maxgen            int
-	answerProbability float64
-	logger            *zap.SugaredLogger
-)
-
-const (
-	//DefaultAnswerProbability is used when env and flag is not set
-	DefaultAnswerProbability = 0.25
+	logger *zap.SugaredLogger
 )
 
 func init() {
-	nwords, err := strconv.Atoi(os.Getenv("XRICH_MAX_WORDS"))
-	if err != nil {
-		nwords = xrich.MAXGEN
-	}
+	// FLAG (PRIMARY):
+	flag.String("token", "", "Telegram Bot Token")
+	flag.Int("maxwords", xrich.MAXGEN, "number of generated words")
+	flag.Int("answerProbabality", xrich.MAXGEN, "answer probabality")
+	flag.Bool("logjson", false, "log to json")
 
-	prob, err := strconv.ParseFloat(os.Getenv("XRICH_ANSWER_PROBABALITY"), 64)
-	if err != nil {
-		prob = DefaultAnswerProbability
-	}
+	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 
-	logToJSON := false
+	// ENV (SECONDARY):
+	viper.SetEnvPrefix("XRICH")
 
-	flag.StringVar(&telegramBotToken, "token", os.Getenv("XRICH_TELEGRAM_TOKEN"), "Telegram Bot Token")
-	flag.IntVar(&maxgen, "max", nwords, "max number of generated words")
-	flag.Float64Var(&answerProbability, "p", prob, "answer probability")
-	flag.BoolVar(&logToJSON, "logjson", false, "log to json")
-	flag.Parse()
+	viper.BindEnv("token", "TELEGRAM_TOKEN")
+	viper.BindEnv("maxwords", "MAX_WORDS")
+	viper.BindEnv("answerProbabality", "ANSWER_PROBABALITY")
+	viper.BindEnv("infiles", "INPUT_FILES")
+
+	// DEFAULT:
+	viper.SetDefault("token", "")
+	viper.SetDefault("maxwords", xrich.MAXGEN)
+	viper.SetDefault("answerProbabality", 0.25)
+
+	// PARSE:
+	pflag.Parse()
+	viper.BindPFlags(pflag.CommandLine)
 
 	loggerCfg := zap.NewProductionConfig()
-	if logToJSON {
+	if viper.GetBool("logtojson") {
 		loggerCfg.Encoding = "json"
 	} else {
 		encoderConfig := zap.NewProductionEncoderConfig()
@@ -63,7 +62,7 @@ func init() {
 	logger = l.Sugar()
 
 	// без него не запускаемся
-	if telegramBotToken == "" {
+	if viper.GetString("token") == "" {
 		logger.Fatalw("token is required")
 	}
 }
@@ -128,11 +127,11 @@ func newReaders(filepathes []string) []io.Reader {
 
 func main() {
 	var filenames []string
-	filenamesEnv := os.Getenv("XRICH_INPUT_FILES")
+	filenamesEnv := viper.GetString("infiles")
 	if filenamesEnv != "" {
 		filenames = strings.Split(filenamesEnv, ";")
 	}
-	flags := flag.Args()
+	flags := pflag.Args()
 	filenames = append(filenames, flags...)
 
 	rs := newReaders(filenames)
@@ -142,7 +141,7 @@ func main() {
 	c.Build(t)
 
 	// используя токен создаем новый инстанс бота
-	bot, err := tgbotapi.NewBotAPI(telegramBotToken)
+	bot, err := tgbotapi.NewBotAPI(viper.GetString("token"))
 	if err != nil {
 		logger.Fatalw("failed to initialize botapi", err)
 	}
@@ -175,8 +174,8 @@ func main() {
 		//log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 
 		if update.Message.Text != "" {
-			if rand.Float64() <= answerProbability {
-				reply := c.GenerateAnswer(update.Message.Text, maxgen)
+			if rand.Float64() <= viper.GetFloat64("answerProbability") {
+				reply := c.GenerateAnswer(update.Message.Text, viper.GetInt("maxwords"))
 				if reply != "" {
 					_, err = bot.Send(tgbotapi.NewChatAction(update.Message.Chat.ID, tgbotapi.ChatTyping))
 					if err != nil {
