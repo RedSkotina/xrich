@@ -87,9 +87,9 @@ func main() {
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 
 	// ENV (SECONDARY):
-	viper.SetEnvPrefix("XRICH")
+	//viper.SetEnvPrefix("XRICH")
 
-	viper.BindEnv("maxwords", "MAX_WORDS")
+	viper.BindEnv("maxwords", "XRICH_MAX_WORDS")
 
 	// DEFAULT:
 	viper.SetDefault("maxwords", xrich.MAXGEN)

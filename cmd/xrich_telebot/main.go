@@ -30,14 +30,16 @@ func init() {
 	flag.Bool("logjson", false, "log to json")
 
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
+	viper.AutomaticEnv()
 
 	// ENV (SECONDARY):
-	viper.SetEnvPrefix("XRICH")
-
-	viper.BindEnv("token", "TELEGRAM_TOKEN")
-	viper.BindEnv("maxwords", "MAX_WORDS")
-	viper.BindEnv("answerProbabality", "ANSWER_PROBABALITY")
-	viper.BindEnv("infiles", "INPUT_FILES")
+	//viper.SetEnvPrefix("XRICH") //viper bug: cant use symbol _ in BindEnv
+	viper.AutomaticEnv()
+	//XRICH_TELEGRAM_
+	viper.BindEnv("token", "XRICH_TELEGRAM_TOKEN")
+	viper.BindEnv("maxwords", "XRICH_MAX_WORDS")
+	viper.BindEnv("answerProbabality", "XRICH_ANSWER_PROBABALITY")
+	viper.BindEnv("infiles", "XRICH_INPUT_FILES")
 
 	// DEFAULT:
 	viper.SetDefault("token", "")
@@ -61,7 +63,6 @@ func init() {
 	_ = zap.RedirectStdLog(l)
 	logger = l.Sugar()
 
-	// без него не запускаемся
 	if viper.GetString("token") == "" {
 		logger.Fatalw("token is required")
 	}
@@ -127,6 +128,7 @@ func newReaders(filepathes []string) []io.Reader {
 
 func main() {
 	var filenames []string
+
 	filenamesEnv := viper.GetString("infiles")
 	if filenamesEnv != "" {
 		filenames = strings.Split(filenamesEnv, ";")
@@ -140,7 +142,6 @@ func main() {
 	c := xrich.NewMarkovChain(logger.Desugar())
 	c.Build(t)
 
-	// используя токен создаем новый инстанс бота
 	bot, err := tgbotapi.NewBotAPI(viper.GetString("token"))
 	if err != nil {
 		logger.Fatalw("failed to initialize botapi", err)
@@ -150,11 +151,9 @@ func main() {
 		"account", bot.Self.UserName,
 	)
 
-	// u - структура с конфигом для получения апдейтов
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
-	// используя конфиг u создаем канал в который будут прилетать новые сообщения
 	updates, err := bot.GetUpdatesChan(u)
 
 	// discard all pending messages
@@ -163,14 +162,11 @@ func main() {
 	time.Sleep(time.Millisecond * 500)
 	updates.Clear()
 
-	// в канал updates прилетают структуры типа Update
-	// вычитываем их и обрабатываем
 	for update := range updates {
 		if update.Message == nil {
 			continue
 		}
 
-		// логируем от кого какое сообщение пришло
 		//log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 
 		if update.Message.Text != "" {
@@ -183,9 +179,9 @@ func main() {
 					}
 					waitTime := time.Duration((rand.Int()%100000*len(reply))%2000) * time.Millisecond
 					time.Sleep(waitTime)
-					// создаем ответное сообщение
+
 					msg := tgbotapi.NewMessage(update.Message.Chat.ID, reply)
-					// отправляем
+
 					_, err = bot.Send(msg)
 					if err != nil {
 						logger.Errorw("unable to send error message", err)
