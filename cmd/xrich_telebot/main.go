@@ -19,6 +19,8 @@ import (
 	"gopkg.in/telegram-bot-api.v4"
 )
 
+const xrichTarget = "Хрыч"
+
 var (
 	logger *zap.SugaredLogger
 )
@@ -189,6 +191,8 @@ func main() {
 			question := update.Message.Text
 			answerProbability := viper.GetFloat64("answerProbability")
 			switch {
+			case strings.Contains(strings.ToLower(question), strings.ToLower(xrichTarget)):
+				answerProbability = 1
 			case bot.IsMessageToMe(*update.Message):
 				answerProbability = 1
 				question = strings.Replace(question, "@"+bot.Self.UserName, "", 1)
