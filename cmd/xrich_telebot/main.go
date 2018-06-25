@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"io"
+	"log"
 	"math/rand"
 	"os"
 	"strings"
@@ -164,27 +165,58 @@ func main() {
 			continue
 		}
 
-		//log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
+		if update.Message.IsCommand() {
+			log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
+			var reply string
+			switch update.Message.Command() {
+			case "start":
+				reply = "Привет. Я клон Старого Хрыча"
+			default:
+				reply = ""
+			}
+			if reply != "" {
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, reply)
+
+				_, err = bot.Send(msg)
+				if err != nil {
+					logger.Errorw("unable to send error message", err)
+				}
+			}
+			continue
+		}
 
 		if update.Message.Text != "" {
-			if rand.Float64() <= viper.GetFloat64("answerProbability") {
-				reply := c.GenerateAnswer(update.Message.Text, viper.GetInt("maxwords"))
-				if reply != "" {
-					_, err = bot.Send(tgbotapi.NewChatAction(update.Message.Chat.ID, tgbotapi.ChatTyping))
-					if err != nil {
-						logger.Warnw("unable to send 'typing' status to the channel", err)
-					}
-					waitTime := time.Duration((rand.Int()%100000*len(reply))%2000) * time.Millisecond
-					time.Sleep(waitTime)
+			question := update.Message.Text
+			answerProbability := viper.GetFloat64("answerProbability")
+			switch {
+			case bot.IsMessageToMe(*update.Message):
+				answerProbability = 1
+				question = strings.Replace(question, "@"+bot.Self.UserName, "", 1)
+			case update.Message.Chat.IsPrivate():
+				answerProbability = 1
+			}
 
-					msg := tgbotapi.NewMessage(update.Message.Chat.ID, reply)
+			if rand.Float64() <= answerProbability {
+				{
+					reply := c.GenerateAnswer(question, viper.GetInt("maxwords"))
+					if reply != "" {
+						_, err = bot.Send(tgbotapi.NewChatAction(update.Message.Chat.ID, tgbotapi.ChatTyping))
+						if err != nil {
+							logger.Warnw("unable to send 'typing' status to the channel", err)
+						}
+						waitTime := time.Duration((rand.Int()%100000*len(reply))%2000) * time.Millisecond
+						time.Sleep(waitTime)
 
-					_, err = bot.Send(msg)
-					if err != nil {
-						logger.Errorw("unable to send error message", err)
+						msg := tgbotapi.NewMessage(update.Message.Chat.ID, reply)
+
+						_, err = bot.Send(msg)
+						if err != nil {
+							logger.Errorw("unable to send error message", err)
+						}
 					}
 				}
 			}
+
 		}
 	}
 }
