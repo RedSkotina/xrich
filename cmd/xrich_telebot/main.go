@@ -26,25 +26,22 @@ func init() {
 	// FLAG (PRIMARY):
 	flag.String("token", "", "Telegram Bot Token")
 	flag.Int("maxwords", xrich.MAXGEN, "number of generated words")
-	flag.Int("answerProbabality", xrich.MAXGEN, "answer probabality")
+	flag.Int("answerProbability", xrich.MAXGEN, "answer probabality")
 	flag.Bool("logjson", false, "log to json")
 
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
-	viper.AutomaticEnv()
-
 	// ENV (SECONDARY):
 	//viper.SetEnvPrefix("XRICH") //viper bug: cant use symbol _ in BindEnv
-	viper.AutomaticEnv()
-	//XRICH_TELEGRAM_
+	//viper.AutomaticEnv()
 	viper.BindEnv("token", "XRICH_TELEGRAM_TOKEN")
 	viper.BindEnv("maxwords", "XRICH_MAX_WORDS")
-	viper.BindEnv("answerProbabality", "XRICH_ANSWER_PROBABALITY")
+	viper.BindEnv("answerProbability", "XRICH_ANSWER_PROBABALITY")
 	viper.BindEnv("infiles", "XRICH_INPUT_FILES")
 
 	// DEFAULT:
 	viper.SetDefault("token", "")
 	viper.SetDefault("maxwords", xrich.MAXGEN)
-	viper.SetDefault("answerProbabality", 0.25)
+	viper.SetDefault("answerProbability", 0.25)
 
 	// PARSE:
 	pflag.Parse()
