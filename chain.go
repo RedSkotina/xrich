@@ -22,8 +22,8 @@ const (
 	SEP = "."
 )
 
-var reClearTrash = regexp.MustCompile(`[^A-zА-я\p{P}\s]`)
-var reIsWord = regexp.MustCompile(`.*[A-zА-я].*`)
+var reClearTrash = regexp.MustCompile(`[^\p{L}\p{P}\d\s]`)
+var reIsWord = regexp.MustCompile(`[\p{L}\d]`)
 var reMultiPunct = regexp.MustCompile(`(\p{P}\s){2,}`)
 
 func clearString(s string) string {
@@ -161,7 +161,7 @@ func (r *MarkovChain) SetGeneratePolicy(p GeneratePolicy) {
 }
 
 func isWord(s string) bool {
-	return reIsWord.MatchString(s)
+	return reIsWord.FindStringIndex(s) != nil
 }
 
 func (r *MarkovChain) stepBuild(ctx *Context, word string, sol bool) {

@@ -97,3 +97,30 @@ func TestAnswer5(t *testing.T) {
 	s := c.GenerateAnswer("b,c", 10)
 	assert.Equal(t, "b c b", s)
 }
+
+func TestAnswerR1(t *testing.T) {
+	ss := []string{"так он сидел в девопсе", "прод с девопс и шлюхами за 30к", "готовых за 120к в москве это обслуживать"}
+	c := NewMarkovChain(logger)
+	c.SetGeneratePolicy(testGeneratePolicy{})
+	c.Build(ss)
+	s := c.GenerateAnswer("в девопс чатике", 50)
+	assert.Equal(t, "b c b", s)
+}
+
+func TestAnswerR2(t *testing.T) {
+	ss := []string{"и всё"}
+	c := NewMarkovChain(logger)
+	c.SetGeneratePolicy(testGeneratePolicy{})
+	c.Build(ss)
+	s := c.GenerateAnswer("и всё", 50)
+	assert.Equal(t, "и всё", s)
+}
+
+func TestAnswerR3(t *testing.T) {
+	ss := []string{"за 30к"}
+	c := NewMarkovChain(logger)
+	c.SetGeneratePolicy(testGeneratePolicy{})
+	c.Build(ss)
+	s := c.GenerateAnswer("за 30к", 50)
+	assert.Equal(t, "за 30к", s)
+}
