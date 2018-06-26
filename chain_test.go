@@ -108,19 +108,19 @@ func TestAnswerR1(t *testing.T) {
 }
 
 func TestAnswerR2(t *testing.T) {
-	ss := []string{"и всё"}
+	ss := []string{"и всё за 30к"}
+	c := NewMarkovChain(logger)
+	c.SetGeneratePolicy(testGeneratePolicy{})
+	c.Build(ss)
+	s := c.GenerateAnswer("и все", 50)
+	assert.Equal(t, "и всё за 30к", s)
+}
+
+func TestAnswerR3(t *testing.T) {
+	ss := []string{"кодер, ему 42 года", "и всё пиздец, ему платят"}
 	c := NewMarkovChain(logger)
 	c.SetGeneratePolicy(testGeneratePolicy{})
 	c.Build(ss)
 	s := c.GenerateAnswer("и всё", 50)
-	assert.Equal(t, "и всё", s)
-}
-
-func TestAnswerR3(t *testing.T) {
-	ss := []string{"за 30к"}
-	c := NewMarkovChain(logger)
-	c.SetGeneratePolicy(testGeneratePolicy{})
-	c.Build(ss)
-	s := c.GenerateAnswer("за 30к", 50)
-	assert.Equal(t, "за 30к", s)
+	assert.Equal(t, "и всё пиздец , ему 42 года", s)
 }
